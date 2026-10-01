@@ -427,6 +427,19 @@
   .end-buttons .primary-btn{ flex:1; }
   .end-buttons .ghost-btn{ flex:1; text-align:center; }
 
+  .end-buttons{ flex-wrap:wrap; }
+  .end-buttons .redo-wrong-btn{ flex:1 1 100%; }
+  .finish-row{
+    margin-top:14px;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+    display:flex;
+    justify-content:flex-end;
+  }
+  .finish-btn{ font-size:13px; padding:9px 14px; color:var(--text-dim); }
+  .finish-btn:hover:not(:disabled){ color:var(--text); border-color:var(--amber); }
+  .finish-btn:disabled{ opacity:.4; cursor:not-allowed; }
+
   .hidden{ display:none !important; }
 
   .cache-note{
@@ -583,6 +596,10 @@
         <span class="feedback-text" id="feedback-text"></span>
         <button class="ghost-btn hidden" id="next-btn">Next question →</button>
       </div>
+
+      <div class="finish-row">
+        <button class="ghost-btn finish-btn" id="finish-btn" title="End the quiz now and see your results">Finish quiz now ⏹</button>
+      </div>
     </div>
 
     <div class="breaker-wrap">
@@ -615,6 +632,7 @@
       </div>
 
       <div class="end-buttons">
+        <button class="primary-btn redo-wrong-btn hidden" id="redo-wrong-btn">Redo wrong questions only</button>
         <button class="primary-btn" id="restart-same-btn">Run it back</button>
         <button class="ghost-btn" id="restart-menu-btn">New session</button>
       </div>
@@ -720,6 +738,8 @@
   const reviewList = document.getElementById('review-list');
   const restartSameBtn = document.getElementById('restart-same-btn');
   const restartMenuBtn = document.getElementById('restart-menu-btn');
+  const finishBtn = document.getElementById('finish-btn');
+  const redoWrongBtn = document.getElementById('redo-wrong-btn');
 
   let selectedMode = 'all';
 
@@ -783,7 +803,12 @@
   });
 
   // ---------------- rendering the quiz ----------------
+  function updateFinishBtn(){
+    finishBtn.disabled = answered === 0;
+  }
+
   function renderQuestion(){
+    updateFinishBtn();
     const q = sessionQuestions[currentIndex];
     const record = sessionRecord[currentIndex];
 
@@ -885,6 +910,7 @@
     };
 
     renderBreaker();
+    updateFinishBtn();
     nextBtn.textContent = currentIndex === sessionQuestions.length - 1 ? 'Finish →' : 'Next question →';
     nextBtn.classList.remove('hidden');
     nextBtn.focus();
@@ -905,6 +931,13 @@
         renderBreaker();
       }
     }
+  });
+
+  // finish the quiz early, whenever you want
+  finishBtn.addEventListener('click', () => {
+    if(answered === 0) return;
+    showEnd();
+    window.scrollTo({top: 0, behavior: 'smooth'});
   });
 
   // keyboard shortcuts: A-D to answer, Enter to advance
@@ -964,6 +997,8 @@
 
     const wrong = completedRecords.filter(r => !r.isCorrect);
     endMissedCount.textContent = wrong.length;
+    redoWrongBtn.classList.toggle('hidden', wrong.length === 0);
+    redoWrongBtn.textContent = `Redo wrong questions only (${wrong.length})`;
 
     reviewList.innerHTML = '';
     if(wrong.length === 0){
@@ -997,6 +1032,23 @@
       });
     }
   }
+
+  redoWrongBtn.addEventListener('click', () => {
+    const wrongQs = sessionRecord.filter(r => r && !r.isCorrect).map(r => sessionQuestions[r.index]);
+    if(!wrongQs.length) return;
+    sessionQuestions = wrongQs;
+    currentIndex = 0;
+    streak = 0;
+    bestStreak = 0;
+    score = 0;
+    answered = 0;
+    sessionRecord = Array(sessionQuestions.length).fill(null);
+    screenEnd.classList.add('hidden');
+    screenQuiz.classList.remove('hidden');
+    renderBreaker();
+    renderQuestion();
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  });
 
   restartSameBtn.addEventListener('click', () => {
     currentIndex = 0;
