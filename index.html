@@ -1975,39 +1975,43 @@
   }, 4000);
 
   // ======================= ATC radar backdrop (login screen) =======================
-  // Pure canvas, no libs. Sim runs in NM (east, north); the screen is just a view of it.
+  // Pure canvas, no libs. Scope centred on OIIE (Imam Khomeini Intl). Sim runs in NM (east, north).
   (function(){
     const cv = document.getElementById('radar'), g = cv.getContext('2d');
     const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const RANGE = 40, TS = 20;                       // NM at outer ring, sim speed-up
-    const AP = { e: 14, n: -24 }, RWY = 60;           // airport + landing heading (ILS 06)
-    const BRG = (RWY + 180) % 360;                   // final approach course, outward from threshold
+    const RANGE = 50, TS = 5;                        // NM at outer ring; sim speed-up (1 = real time)
+    const BRG = 110, RWY = 290, RL = 2.3, SEP = 0.4; // 29R/29L parallel pair; final approach comes in from 110°
     const AMB = '255,196,80', TXT = 'rgba(255,220,140,0.95)', RED = '#FF4040';
     const rad = d => d * Math.PI / 180, S = d => Math.sin(rad(d)), K = d => Math.cos(rad(d));
     const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
     const sqk = () => { let s; do { s = ''; for(let i = 0; i < 4; i++) s += Math.floor(Math.random() * 8); } while(/^(0000|7500|7600|7700)$/.test(s)); return s; };
-    const call = () => pick(['IRA','IRM','QTR','UAE','THY','FDB','ABY','DLH','BAW','AFR','SIA','ETD']) + Math.floor(rnd(100, 9999));
-    const FIXES = [{ n: 'KIVAN', e: -22, nn: 14 }, { n: 'ABDAN', e: -6, nn: 24 }, { n: 'SOLUR', e: 14, nn: 22 }, { n: 'PARAD', e: -18, nn: -16 }];
+    // ICAO airline designators: Iran Air, Mahan, Aseman, Qeshm, Caspian, Kish, Ata | Emirates, United, Qatar, Turkish, flydubai, Etihad, Air Arabia, Lufthansa, BA, Air France, KLM
+    const AL = ['IRA','IRM','IRC','QSM','CPN','KIS','TBZ','UAE','UAL','QTR','THY','FDB','ETD','ABY','DLH','BAW','AFR','KLM'];
+    const call = () => pick(AL) + Math.floor(rnd(100, 9999));
+    const speed = fl => Math.round(Math.min(470, Math.max(230, 250 + (fl - 100) * 0.75)));   // rough GS vs level
+    // real places, NM east/north of OIIE (approximate)
+    const CITIES = [{ n: 'TEHRAN', e: 11.6, nn: 16.4 }, { n: 'KARAJ', e: -7.8, nn: 25 }, { n: 'VARAMIN', e: 24.2, nn: -5.5 }, { n: 'QOM', e: -13.5, nn: -46.6 }];
+    const OIII = { e: 7.9, nn: 16.4 };               // Mehrabad
+    const thr = { e: SEP * S(20) + RL / 2 * S(BRG), n: SEP * K(20) + RL / 2 * K(BRG) };       // 29R threshold (north runway)
 
     let W, H, R, PX, cX, cY, ac = [], last = 0, t = 0;
     const xy = (e, n) => [cX + e * PX, cY - n * PX];
 
     function spawn(a, edge){
-      const b = rnd(0, 360), r = edge ? 42 : rnd(5, 38);
-      a.e = r * S(b); a.n = r * K(b);
-      a.h = (b + 180 + rnd(-50, 50) + 360) % 360;
-      a.trail = [];
+      const b = rnd(0, 360), r = edge ? RANGE - 2 : rnd(10, RANGE - 8);
+      a.e = r * S(b); a.n = r * K(b); a.trail = [];
+      a.h = a.emg ? (Math.atan2(-a.e, -a.n) * 180 / Math.PI + 360) % 360 : (b + 180 + rnd(-35, 35) + 360) % 360;   // 7700 diverts to OIIE
     }
     function mk(opt){
-      const a = Object.assign({ cs: call(), sq: sqk(), kt: Math.round(rnd(280, 480)), fl: Math.round(rnd(80, 390)), vs: pick([-1, 0, 0, 1]), trail: [], tt: 0 }, opt);
-      if(!a.fin) spawn(a, false); return a;
+      const a = Object.assign({ cs: call(), sq: sqk(), fl: Math.round(rnd(90, 380)), vs: pick([-1, 0, 0, 1]), trail: [], tt: 0 }, opt);
+      if(!a.fin){ a.kt = speed(a.fl); spawn(a, false); } return a;
     }
     function init(){
       ac = [];
-      const n = W < 600 ? 5 : 9;
-      for(let i = 0; i < n; i++) ac.push(mk({}));
-      ac.push(mk({ sq: '7700', emg: true, fl: 280, vs: -1, kt: 330, cs: 'IRM' + Math.floor(rnd(1000, 9999)) }));
-      ac.push(mk({ fin: true, d: 15, kt: 150 }), mk({ fin: true, d: 8, kt: 145 }));
+      for(let i = W < 600 ? 2 : 3; i > 0; i--) ac.push(mk({}));
+      ac.push(mk({ sq: '7700', emg: true, fl: 240, vs: -1, cs: pick(['IRA','IRM','QSM']) + Math.floor(rnd(100, 9999)) }));
+      ac.push(mk({ fin: true, d: 13, kt: 155 }));
+      if(W >= 600) ac.push(mk({ fin: true, d: 6, kt: 150 }));
     }
     function size(){
       const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -2019,15 +2023,17 @@
     function step(dt){
       ac.forEach(a => {
         if(a.fin){
-          a.d -= a.kt / 3600 * TS * dt; if(a.d < 0.3) a.d = 16;
-          a.e = AP.e + a.d * S(BRG); a.n = AP.n + a.d * K(BRG); a.h = RWY; a.fl = Math.max(1, Math.round(3.2 * a.d)); a.vs = -1;
+          a.d -= a.kt / 3600 * TS * dt; if(a.d < 0.3) a.d = 15;
+          a.e = thr.e + a.d * S(BRG); a.n = thr.n + a.d * K(BRG); a.h = RWY;
+          a.fl = Math.round((3305 + 318 * a.d) / 100); a.vs = -1;        // 3° glidepath from 3,305 ft field elevation
         } else {
           a.e += S(a.h) * a.kt / 3600 * TS * dt; a.n += K(a.h) * a.kt / 3600 * TS * dt;
-          a.fl = Math.min(390, Math.max(a.emg ? 100 : 60, a.fl + a.vs * (a.emg ? 1.5 : 0.4) * dt));
+          a.fl = Math.min(390, Math.max(a.emg ? 100 : 60, a.fl + a.vs * (a.emg ? 0.42 : 0.25) * TS * dt));   // 2,500 / 1,500 ft per min
           if(a.emg && a.fl <= 100) a.vs = 0;
-          if(Math.hypot(a.e, a.n) > 44) spawn(a, true);
+          a.kt = speed(a.fl);
+          if(a.emg ? Math.hypot(a.e, a.n) < 4 : Math.hypot(a.e, a.n) > RANGE + 3) spawn(a, true);
         }
-        if((a.tt += dt) > 1.4){ a.tt = 0; a.trail.push([a.e, a.n]); if(a.trail.length > 5) a.trail.shift(); }
+        if((a.tt += dt) > 5 / TS * 1.4){ a.tt = 0; a.trail.push([a.e, a.n]); if(a.trail.length > 5) a.trail.shift(); }
       });
     }
 
@@ -2040,11 +2046,11 @@
       g.fillStyle = glow; g.fillRect(0, 0, W, H);
       g.font = '10px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
 
-      // range rings + radials
+      // range rings (10 NM) + radials
       g.lineWidth = 1;
-      for(let i = 1; i <= 4; i++){
-        g.strokeStyle = `rgba(${AMB},${i === 4 ? 0.8 : 0.45})`; g.beginPath(); g.arc(cX, cY, R * i / 4, 0, 6.2832); g.stroke();
-        txt(String(i * 10), cX + 5 + R * i / 4 * 0.7071, cY - R * i / 4 * 0.7071 - 6, `rgb(${AMB})`, 0.8);
+      for(let i = 1; i <= 5; i++){
+        g.strokeStyle = `rgba(${AMB},${i === 5 ? 0.8 : 0.42})`; g.beginPath(); g.arc(cX, cY, R * i / 5, 0, 6.2832); g.stroke();
+        txt(String(i * 10), cX + 5 + R * i / 5 * 0.7071, cY - R * i / 5 * 0.7071 - 6, `rgb(${AMB})`, 0.8);
       }
       g.strokeStyle = `rgba(${AMB},0.2)`;
       for(let b = 0; b < 360; b += 30){ g.beginPath(); g.moveTo(cX, cY); g.lineTo(cX + R * S(b), cY - R * K(b)); g.stroke(); }
@@ -2054,36 +2060,35 @@
         g.beginPath(); g.moveTo(cX + R * S(b), cY - R * K(b)); g.lineTo(cX + (R - l) * S(b), cY - (R - l) * K(b)); g.stroke();
         if(b % 30 === 0) txt(String(b).padStart(3, '0'), cX + (R + 17) * S(b), cY - (R + 17) * K(b), `rgb(${AMB})`);
       }
-      g.beginPath(); g.moveTo(cX - 8, cY); g.lineTo(cX + 8, cY); g.moveTo(cX, cY - 8); g.lineTo(cX, cY + 8); g.stroke();
 
-      // map: airway, fixes, sector boundary
-      g.setLineDash([6, 6]); g.strokeStyle = `rgba(${AMB},0.28)`; g.beginPath();
-      FIXES.slice(0, 3).forEach((f, i) => { const [x, y] = xy(f.e, f.nn); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
-      g.beginPath(); [[-30, 6], [-26, -22], [4, -34], [34, -20], [30, 18], [8, 34], [-20, 28]].forEach(([e, n], i) => { const [x, y] = xy(e, n); i ? g.lineTo(x, y) : g.moveTo(x, y); });
-      g.closePath(); g.strokeStyle = `rgba(${AMB},0.16)`; g.stroke(); g.setLineDash([]);
-      FIXES.forEach(f => {
-        const [x, y] = xy(f.e, f.nn);
-        g.strokeStyle = `rgba(${AMB},0.8)`; g.beginPath(); g.moveTo(x, y - 4); g.lineTo(x + 4, y + 3); g.lineTo(x - 4, y + 3); g.closePath(); g.stroke();
-        g.textAlign = 'left'; txt(f.n, x + 8, y, `rgb(${AMB})`, 0.8);
+      // map: cities + Mehrabad
+      g.textAlign = 'left';
+      CITIES.forEach(c => { const [x, y] = xy(c.e, c.nn); g.strokeStyle = `rgba(${AMB},0.8)`; g.strokeRect(x - 2, y - 2, 4, 4); txt(c.n, x + 7, y, `rgb(${AMB})`, 0.75); });
+      { const [x, y] = xy(OIII.e, OIII.nn); g.strokeStyle = `rgba(${AMB},0.85)`; g.beginPath(); g.arc(x, y, 4, 0, 6.2832); g.stroke(); g.textAlign = 'right'; txt('OIII', x - 8, y, `rgb(${AMB})`, 0.85); g.textAlign = 'left'; }
+
+      // OIIE: two parallel runways + ILS 29R localizer cone with 5 NM ticks
+      const [ox, oy] = xy(0, 0), [tx, ty] = xy(thr.e, thr.n), L = 22, hw = 4;
+      g.lineWidth = 3; g.strokeStyle = '#fff6dc';
+      [1, -1].forEach(s => {
+        const cE = s * SEP * S(20), cN = s * SEP * K(20), [x1, y1] = xy(cE + RL / 2 * S(BRG), cN + RL / 2 * K(BRG)), [x2, y2] = xy(cE - RL / 2 * S(BRG), cN - RL / 2 * K(BRG));
+        g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
       });
-
-      // ILS 25L: runway, localizer cone, 5 NM ticks
-      const [ax, ay] = xy(AP.e, AP.n), L = 22, hw = 5;
-      g.fillStyle = `rgba(${AMB},0.10)`; g.beginPath(); g.moveTo(ax, ay);
-      g.lineTo(ax + L * PX * S(BRG - hw), ay - L * PX * K(BRG - hw)); g.lineTo(ax + L * PX * S(BRG + hw), ay - L * PX * K(BRG + hw)); g.closePath(); g.fill();
+      g.lineWidth = 1;
+      g.fillStyle = `rgba(${AMB},0.10)`; g.beginPath(); g.moveTo(tx, ty);
+      g.lineTo(tx + L * PX * S(BRG - hw), ty - L * PX * K(BRG - hw)); g.lineTo(tx + L * PX * S(BRG + hw), ty - L * PX * K(BRG + hw)); g.closePath(); g.fill();
       g.setLineDash([5, 5]); g.strokeStyle = `rgba(${AMB},0.7)`; g.stroke();
-      g.beginPath(); g.moveTo(ax, ay); g.lineTo(ax + L * PX * S(BRG), ay - L * PX * K(BRG)); g.stroke(); g.setLineDash([]);
-      g.lineWidth = 3; g.strokeStyle = '#fff6dc'; g.beginPath(); g.moveTo(ax, ay); g.lineTo(ax + 1.6 * PX * S(RWY), ay - 1.6 * PX * K(RWY)); g.stroke(); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(tx, ty); g.lineTo(tx + L * PX * S(BRG), ty - L * PX * K(BRG)); g.stroke(); g.setLineDash([]);
       g.textAlign = 'center';
       for(let d = 5; d <= 20; d += 5){
-        const x = ax + d * PX * S(BRG), y = ay - d * PX * K(BRG);
+        const x = tx + d * PX * S(BRG), y = ty - d * PX * K(BRG);
         g.beginPath(); g.moveTo(x - 4 * K(BRG), y - 4 * S(BRG)); g.lineTo(x + 4 * K(BRG), y + 4 * S(BRG)); g.stroke();
-        txt(d + '', x + 11 * S(BRG + 90), y - 11 * K(BRG + 90), `rgb(${AMB})`, 0.8);
+        txt(d + '', x + 11 * S(BRG - 90), y - 11 * K(BRG - 90), `rgb(${AMB})`, 0.8);
       }
-      g.textAlign = 'left'; txt('ILS 06  110.30  ' + String(RWY).padStart(3, '0') + '°', ax + 14, ay + 16, `rgb(${AMB})`);
+      g.textAlign = 'left'; txt('OIIE', ox - 34, oy - 14, `rgb(${AMB})`);
+      txt('ILS 29R', tx + 12.5 * PX * S(BRG) + 10, ty - 12.5 * PX * K(BRG) + 14, `rgb(${AMB})`);
 
-      // sweep (period 8 s) with phosphor-style trailing wedge
-      const th = RM ? 5.2 : (t * 6.2832 / 8) % 6.2832;
+      // sweep (period 6 s) with phosphor-style trailing wedge
+      const th = RM ? 5.2 : (t * 6.2832 / 6) % 6.2832;
       for(let i = 0; i < 48; i++){
         const a0 = th - (i + 1) * 0.02, a1 = th - i * 0.02;
         g.fillStyle = `rgba(${AMB},${0.30 * Math.pow(1 - i / 48, 2)})`;
@@ -2093,33 +2098,21 @@
 
       // targets
       const blink = Math.floor(t * 2) % 2;
-      g.textAlign = 'left';
       ac.forEach(a => {
         const [x, y] = xy(a.e, a.n); if(x < -40 || x > W + 40 || y < -40 || y > H + 40) return;
         const brg = (Math.atan2(a.e, a.n) + 6.2832) % 6.2832, al = RM ? 1 : 1 - ((th - brg + 6.2832) % 6.2832) / 6.2832 * 0.62;
-        a.trail.forEach(([te, tn], i) => { const [tx, ty] = xy(te, tn); g.fillStyle = `rgba(255,64,64,${0.12 + i * 0.07})`; g.fillRect(tx - 1, ty - 1, 2, 2); });
-        g.strokeStyle = `rgba(255,214,130,${al * 0.7})`; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 16 * S(a.h), y - 16 * K(a.h)); g.stroke();
+        a.trail.forEach(([te, tn], i) => { const [px, py] = xy(te, tn); g.fillStyle = `rgba(255,64,64,${0.15 + i * 0.08})`; g.fillRect(px - 1, py - 1, 2, 2); });
+        g.strokeStyle = `rgba(255,214,130,${al * 0.7})`; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 14 * S(a.h), y - 14 * K(a.h)); g.stroke();
         g.shadowColor = RED; g.shadowBlur = 9; g.fillStyle = RED; g.globalAlpha = Math.max(al, 0.5);
         g.beginPath(); g.arc(x, y, 3.4, 0, 6.2832); g.fill(); g.shadowBlur = 0; g.globalAlpha = 1;
         const col = a.emg ? (blink ? RED : '#fff') : TXT, flip = x > W - 120, bx = x + (flip ? -12 : 12), by = y - 26;
-        if(a.emg){ g.strokeStyle = RED; g.globalAlpha = 1 - (t * 1.5 % 1); g.beginPath(); g.arc(x, y, 6 + (t * 1.5 % 1) * 14, 0, 6.2832); g.stroke(); g.globalAlpha = 1; }
+        if(a.emg){ g.strokeStyle = RED; g.globalAlpha = 1 - (t * 0.4 % 1); g.beginPath(); g.arc(x, y, 6 + (t * 0.4 % 1) * 14, 0, 6.2832); g.stroke(); g.globalAlpha = 1; }
         g.strokeStyle = `rgba(${AMB},0.55)`; g.beginPath(); g.moveTo(x, y); g.lineTo(bx, by + 18); g.stroke();
         g.textAlign = flip ? 'right' : 'left';
         if(a.emg){ g.strokeStyle = RED; g.strokeRect(flip ? bx - 78 : bx - 3, by - 8, 82, 38); }
         const vs = a.vs > 0 ? '↑' : a.vs < 0 ? '↓' : '→';
         txt(a.cs, bx, by, col, 0.95); txt('FL' + String(Math.round(a.fl)).padStart(3, '0') + vs + ' ' + a.kt, bx, by + 12, col, 0.9); txt(a.sq + (a.emg ? ' EMG' : ''), bx, by + 24, a.emg ? RED : `rgb(${AMB})`, 1);
       });
-
-      // HUD
-      g.textAlign = 'left'; txt('APP RADAR · 119.100 · N-UP', 16, 20); txt('RNG ' + RANGE + ' NM · SSR MODE A/C', 16, 34, `rgb(${AMB})`, 0.7);
-      g.textAlign = 'right'; txt(new Date().toISOString().slice(11, 19) + 'Z', W - 16, 20);
-      const em = ac.find(a => a.emg);
-      if(em && blink){ g.textAlign = 'left'; g.font = '600 12px "IBM Plex Mono", monospace'; txt('⚠ SQUAWK 7700 · ' + em.cs + ' · EMERGENCY', 16, H - 20, RED); g.font = '10px "IBM Plex Mono", monospace'; }
-      if(W >= 900){
-        g.textAlign = 'left'; txt('TRK      SQ    FL  GS', 16, 62, `rgb(${AMB})`, 0.7);
-        ac.slice().sort((p, q) => q.fl - p.fl).slice(0, 9).forEach((a, i) =>
-          txt(a.cs.padEnd(8) + a.sq + ' ' + String(Math.round(a.fl)).padStart(3, '0') + ' ' + a.kt, 16, 78 + i * 13, a.emg ? RED : TXT, 0.85));
-      }
     }
 
     function loop(now){
