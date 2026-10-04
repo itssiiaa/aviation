@@ -1471,13 +1471,21 @@
   document.querySelectorAll('.stats-subject-btn').forEach(b => {
     b.addEventListener('click', () => { Stats.viewSubject = b.dataset.statsSubject; Stats.render(); });
   });
+  let signInPending = false;
   document.getElementById('stats-signin').addEventListener('click', () => {
-    if(!Stats.cloud) return;
-    Stats.setCloudMsg('', false);
-    Stats.cloud.signIn().catch(err => {
-      if(err && err.code === 'auth/popup-closed-by-user') return;
-      Stats.setCloudMsg('Sign-in failed: ' + Stats.errText(err), true);
-    });
+    if(!Stats.cloud || signInPending) return;   // ignore double taps
+    signInPending = true;
+    const btn = document.getElementById('stats-signin');
+    btn.disabled = true;
+    Stats.setCloudMsg('Opening Google sign-in…', false);
+    Stats.cloud.signIn().then(() => Stats.setCloudMsg('', false)).catch(err => {
+      const code = err && err.code;
+      if(code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request'){
+        Stats.setCloudMsg('Sign-in was cancelled. Tap once and finish the Google window.', false);
+      } else {
+        Stats.setCloudMsg('Sign-in failed: ' + Stats.errText(err), true);
+      }
+    }).finally(() => { signInPending = false; btn.disabled = false; });
   });
   document.getElementById('stats-signout').addEventListener('click', () => {
     if(Stats.cloud) Stats.cloud.signOut();
@@ -1516,7 +1524,16 @@
       const ref  = (subj) => F.doc(db, 'users', auth.currentUser.uid, 'stats', subj);
 
       Stats.attachCloud({
-        signIn:  () => A.signInWithPopup(auth, new A.GoogleAuthProvider()),
+        async signIn(){
+          const provider = new A.GoogleAuthProvider();
+          try{
+            return await A.signInWithPopup(auth, provider);
+          }catch(e){
+            // Some phone browsers block popups: fall back to a full-page redirect.
+            if(e && e.code === 'auth/popup-blocked') return A.signInWithRedirect(auth, provider);
+            throw e;
+          }
+        },
         signOut: () => A.signOut(auth),
         async pull(){
           const out = {};
