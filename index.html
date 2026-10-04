@@ -1975,13 +1975,14 @@
   }, 4000);
 
   // ======================= ATC radar backdrop (login screen) =======================
-  // Pure canvas, no libs. Scope centred on OIIE (Imam Khomeini Intl). Sim runs in NM (east, north).
+  // Pure canvas, no libs. Scope centred on OIIE (Imam Khomeini Intl); Mehrabad (OIII) shown too.
+  // Like a real radar, a target's displayed position/level/speed only refresh when the sweep passes it.
   (function(){
     const cv = document.getElementById('radar'), g = cv.getContext('2d');
     const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const RANGE = 50, TS = 5;                        // NM at outer ring; sim speed-up (1 = real time)
-    const BRG = 110, RWY = 290, RL = 2.3, SEP = 0.4; // 29R/29L parallel pair; final approach comes in from 110°
-    const AMB = '255,196,80', TXT = 'rgba(255,220,140,0.95)', RED = '#FF4040';
+    const RANGE = 50, TS = 2, SW = 5;                // NM at outer ring; sim speed-up (1 = real time); seconds per sweep
+    const BRG = 110, RWY = 290;                      // both airports: final approach comes in from 110°, landing 290°
+    const AMB = '255,196,80', TXT = 'rgba(255,220,140,0.95)', RED = '#FF4040', TAU = 6.2832;
     const rad = d => d * Math.PI / 180, S = d => Math.sin(rad(d)), K = d => Math.cos(rad(d));
     const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
     const sqk = () => { let s; do { s = ''; for(let i = 0; i < 4; i++) s += Math.floor(Math.random() * 8); } while(/^(0000|7500|7600|7700)$/.test(s)); return s; };
@@ -1991,27 +1992,38 @@
     const speed = fl => Math.round(Math.min(470, Math.max(230, 250 + (fl - 100) * 0.75)));   // rough GS vs level
     // real places, NM east/north of OIIE (approximate)
     const CITIES = [{ n: 'TEHRAN', e: 11.6, nn: 16.4 }, { n: 'KARAJ', e: -7.8, nn: 25 }, { n: 'VARAMIN', e: 24.2, nn: -5.5 }, { n: 'QOM', e: -13.5, nn: -46.6 }];
-    const OIII = { e: 7.9, nn: 16.4 };               // Mehrabad
-    const thr = { e: SEP * S(20) + RL / 2 * S(BRG), n: SEP * K(20) + RL / 2 * K(BRG) };       // 29R threshold (north runway)
+    const AIRPORTS = [{ id: 'OIIE', e: 0, n: 0, elev: 3305, RL: 2.3, SEP: 0.4 }, { id: 'OIII', e: 7.9, n: 16.4, elev: 3962, RL: 2.15, SEP: 0.45 }];
+    AIRPORTS.forEach(p => { p.thr = { e: p.e + p.SEP * S(20) + p.RL / 2 * S(BRG), n: p.n + p.SEP * K(20) + p.RL / 2 * K(BRG) }; });   // 29R threshold
 
-    let W, H, R, PX, cX, cY, ac = [], last = 0, t = 0;
+    let W, H, R, PX, cX, cY, ac = [], last = 0, t = 0, th = 0;
     const xy = (e, n) => [cX + e * PX, cY - n * PX];
 
+    // what the controller sees: refreshed only when the sweep crosses the target
+    function paint(a, hard){
+      if(!hard && a.pe != null){ a.trail.push([a.pe, a.pn]); if(a.trail.length > 5) a.trail.shift(); }
+      if(hard) a.trail = [];
+      a.pe = a.e; a.pn = a.n; a.pfl = a.fl; a.pkt = a.kt; a.pvs = a.vs; a.ph = a.h;
+    }
     function spawn(a, edge){
       const b = rnd(0, 360), r = edge ? RANGE - 2 : rnd(10, RANGE - 8);
-      a.e = r * S(b); a.n = r * K(b); a.trail = [];
+      a.e = r * S(b); a.n = r * K(b);
       a.h = a.emg ? (Math.atan2(-a.e, -a.n) * 180 / Math.PI + 360) % 360 : (b + 180 + rnd(-35, 35) + 360) % 360;   // 7700 diverts to OIIE
+      paint(a, true);
     }
     function mk(opt){
-      const a = Object.assign({ cs: call(), sq: sqk(), fl: Math.round(rnd(90, 380)), vs: pick([-1, 0, 0, 1]), trail: [], tt: 0 }, opt);
-      if(!a.fin){ a.kt = speed(a.fl); spawn(a, false); } return a;
+      const a = Object.assign({ cs: call(), sq: sqk(), fl: Math.round(rnd(90, 380)), vs: pick([-1, 0, 0, 1]), trail: [], s: 0 }, opt);
+      if(a.fin) place(a); else { a.kt = speed(a.fl); spawn(a, false); }
+      return a;
+    }
+    function place(a){      // aircraft on final: position + level from distance to the threshold (3° glidepath)
+      a.e = a.ap.thr.e + a.d * S(BRG); a.n = a.ap.thr.n + a.d * K(BRG); a.h = RWY; a.vs = -1;
+      a.fl = Math.round((a.ap.elev + 318 * a.d) / 100); paint(a, true);
     }
     function init(){
       ac = [];
       for(let i = W < 600 ? 2 : 3; i > 0; i--) ac.push(mk({}));
       ac.push(mk({ sq: '7700', emg: true, fl: 240, vs: -1, cs: pick(['IRA','IRM','QSM']) + Math.floor(rnd(100, 9999)) }));
-      ac.push(mk({ fin: true, d: 13, kt: 155 }));
-      if(W >= 600) ac.push(mk({ fin: true, d: 6, kt: 150 }));
+      ac.push(mk({ fin: true, ap: AIRPORTS[0], d: 13, kt: 155 }), mk({ fin: true, ap: AIRPORTS[1], d: 9, kt: 150 }));
     }
     function size(){
       const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -2021,11 +2033,13 @@
     }
 
     function step(dt){
+      const th0 = th; th = (t * TAU / SW) % TAU;
       ac.forEach(a => {
+        // true motion (continuous, invisible to the controller)
         if(a.fin){
-          a.d -= a.kt / 3600 * TS * dt; if(a.d < 0.3) a.d = 15;
-          a.e = thr.e + a.d * S(BRG); a.n = thr.n + a.d * K(BRG); a.h = RWY;
-          a.fl = Math.round((3305 + 318 * a.d) / 100); a.vs = -1;        // 3° glidepath from 3,305 ft field elevation
+          a.d -= a.kt / 3600 * TS * dt; a.e = a.ap.thr.e + a.d * S(BRG); a.n = a.ap.thr.n + a.d * K(BRG);
+          a.fl = Math.round((a.ap.elev + 318 * Math.max(a.d, 0)) / 100);
+          if(a.d < 0.3){ a.d = 15; place(a); }
         } else {
           a.e += S(a.h) * a.kt / 3600 * TS * dt; a.n += K(a.h) * a.kt / 3600 * TS * dt;
           a.fl = Math.min(390, Math.max(a.emg ? 100 : 60, a.fl + a.vs * (a.emg ? 0.42 : 0.25) * TS * dt));   // 2,500 / 1,500 ft per min
@@ -2033,44 +2047,20 @@
           a.kt = speed(a.fl);
           if(a.emg ? Math.hypot(a.e, a.n) < 4 : Math.hypot(a.e, a.n) > RANGE + 3) spawn(a, true);
         }
-        if((a.tt += dt) > 5 / TS * 1.4){ a.tt = 0; a.trail.push([a.e, a.n]); if(a.trail.length > 5) a.trail.shift(); }
+        // sweep crossed this target since last frame? then refresh what is displayed
+        const brg = (Math.atan2(a.pe, a.pn) + TAU) % TAU, s1 = ((th - brg) % TAU + TAU) % TAU, s0 = ((th0 - brg) % TAU + TAU) % TAU;
+        if(s1 < s0) paint(a, false);
+        a.s = s1;
       });
     }
 
     const txt = (s, x, y, col, al) => { g.fillStyle = col || TXT; g.globalAlpha = al == null ? 1 : al; g.fillText(s, x, y); g.globalAlpha = 1; };
 
-    function draw(){
-      g.clearRect(0, 0, W, H);
-      const glow = g.createRadialGradient(cX, cY, 0, cX, cY, R);
-      glow.addColorStop(0, `rgba(${AMB},0.13)`); glow.addColorStop(1, `rgba(${AMB},0)`);
-      g.fillStyle = glow; g.fillRect(0, 0, W, H);
-      g.font = '10px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-
-      // range rings (10 NM) + radials
-      g.lineWidth = 1;
-      for(let i = 1; i <= 5; i++){
-        g.strokeStyle = `rgba(${AMB},${i === 5 ? 0.8 : 0.42})`; g.beginPath(); g.arc(cX, cY, R * i / 5, 0, 6.2832); g.stroke();
-        txt(String(i * 10), cX + 5 + R * i / 5 * 0.7071, cY - R * i / 5 * 0.7071 - 6, `rgb(${AMB})`, 0.8);
-      }
-      g.strokeStyle = `rgba(${AMB},0.2)`;
-      for(let b = 0; b < 360; b += 30){ g.beginPath(); g.moveTo(cX, cY); g.lineTo(cX + R * S(b), cY - R * K(b)); g.stroke(); }
-      g.strokeStyle = `rgba(${AMB},0.8)`;
-      for(let b = 0; b < 360; b += 5){
-        const l = b % 30 === 0 ? 12 : b % 10 === 0 ? 8 : 4;
-        g.beginPath(); g.moveTo(cX + R * S(b), cY - R * K(b)); g.lineTo(cX + (R - l) * S(b), cY - (R - l) * K(b)); g.stroke();
-        if(b % 30 === 0) txt(String(b).padStart(3, '0'), cX + (R + 17) * S(b), cY - (R + 17) * K(b), `rgb(${AMB})`);
-      }
-
-      // map: cities + Mehrabad
-      g.textAlign = 'left';
-      CITIES.forEach(c => { const [x, y] = xy(c.e, c.nn); g.strokeStyle = `rgba(${AMB},0.8)`; g.strokeRect(x - 2, y - 2, 4, 4); txt(c.n, x + 7, y, `rgb(${AMB})`, 0.75); });
-      { const [x, y] = xy(OIII.e, OIII.nn); g.strokeStyle = `rgba(${AMB},0.85)`; g.beginPath(); g.arc(x, y, 4, 0, 6.2832); g.stroke(); g.textAlign = 'right'; txt('OIII', x - 8, y, `rgb(${AMB})`, 0.85); g.textAlign = 'left'; }
-
-      // OIIE: two parallel runways + ILS 29R localizer cone with 5 NM ticks
-      const [ox, oy] = xy(0, 0), [tx, ty] = xy(thr.e, thr.n), L = 22, hw = 4;
+    function airport(p){
+      const [tx, ty] = xy(p.thr.e, p.thr.n), L = 22, hw = 4;
       g.lineWidth = 3; g.strokeStyle = '#fff6dc';
       [1, -1].forEach(s => {
-        const cE = s * SEP * S(20), cN = s * SEP * K(20), [x1, y1] = xy(cE + RL / 2 * S(BRG), cN + RL / 2 * K(BRG)), [x2, y2] = xy(cE - RL / 2 * S(BRG), cN - RL / 2 * K(BRG));
+        const cE = p.e + s * p.SEP * S(20), cN = p.n + s * p.SEP * K(20), [x1, y1] = xy(cE + p.RL / 2 * S(BRG), cN + p.RL / 2 * K(BRG)), [x2, y2] = xy(cE - p.RL / 2 * S(BRG), cN - p.RL / 2 * K(BRG));
         g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
       });
       g.lineWidth = 1;
@@ -2084,11 +2074,39 @@
         g.beginPath(); g.moveTo(x - 4 * K(BRG), y - 4 * S(BRG)); g.lineTo(x + 4 * K(BRG), y + 4 * S(BRG)); g.stroke();
         txt(d + '', x + 11 * S(BRG - 90), y - 11 * K(BRG - 90), `rgb(${AMB})`, 0.8);
       }
-      g.textAlign = 'left'; txt('OIIE', ox - 34, oy - 14, `rgb(${AMB})`);
-      txt('ILS 29R', tx + 12.5 * PX * S(BRG) + 10, ty - 12.5 * PX * K(BRG) + 14, `rgb(${AMB})`);
+      const [ox, oy] = xy(p.e, p.n);
+      g.textAlign = 'right'; txt(p.id, ox - 10, oy - 10, `rgb(${AMB})`);
+      g.textAlign = 'left'; txt('ILS 29R', tx + 12.5 * PX * S(BRG) + 10, ty - 12.5 * PX * K(BRG) + 14, `rgb(${AMB})`);
+    }
 
-      // sweep (period 6 s) with phosphor-style trailing wedge
-      const th = RM ? 5.2 : (t * 6.2832 / 6) % 6.2832;
+    function draw(){
+      g.clearRect(0, 0, W, H);
+      const glow = g.createRadialGradient(cX, cY, 0, cX, cY, R);
+      glow.addColorStop(0, `rgba(${AMB},0.13)`); glow.addColorStop(1, `rgba(${AMB},0)`);
+      g.fillStyle = glow; g.fillRect(0, 0, W, H);
+      g.font = '10px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+
+      // range rings (10 NM) + radials + bearing scale
+      g.lineWidth = 1;
+      for(let i = 1; i <= 5; i++){
+        g.strokeStyle = `rgba(${AMB},${i === 5 ? 0.8 : 0.42})`; g.beginPath(); g.arc(cX, cY, R * i / 5, 0, TAU); g.stroke();
+        txt(String(i * 10), cX + 5 + R * i / 5 * 0.7071, cY - R * i / 5 * 0.7071 - 6, `rgb(${AMB})`, 0.8);
+      }
+      g.strokeStyle = `rgba(${AMB},0.2)`;
+      for(let b = 0; b < 360; b += 30){ g.beginPath(); g.moveTo(cX, cY); g.lineTo(cX + R * S(b), cY - R * K(b)); g.stroke(); }
+      g.strokeStyle = `rgba(${AMB},0.8)`;
+      for(let b = 0; b < 360; b += 5){
+        const l = b % 30 === 0 ? 12 : b % 10 === 0 ? 8 : 4;
+        g.beginPath(); g.moveTo(cX + R * S(b), cY - R * K(b)); g.lineTo(cX + (R - l) * S(b), cY - (R - l) * K(b)); g.stroke();
+        if(b % 30 === 0) txt(String(b).padStart(3, '0'), cX + (R + 17) * S(b), cY - (R + 17) * K(b), `rgb(${AMB})`);
+      }
+
+      // map: cities, then both airports with their ILS
+      g.textAlign = 'left';
+      CITIES.forEach(c => { const [x, y] = xy(c.e, c.nn); g.strokeStyle = `rgba(${AMB},0.8)`; g.strokeRect(x - 2, y - 2, 4, 4); txt(c.n, x + 7, y, `rgb(${AMB})`, 0.75); });
+      AIRPORTS.forEach(airport);
+
+      // sweep with phosphor-style trailing wedge
       for(let i = 0; i < 48; i++){
         const a0 = th - (i + 1) * 0.02, a1 = th - i * 0.02;
         g.fillStyle = `rgba(${AMB},${0.30 * Math.pow(1 - i / 48, 2)})`;
@@ -2096,22 +2114,22 @@
       }
       g.strokeStyle = `rgba(${AMB},0.95)`; g.beginPath(); g.moveTo(cX, cY); g.lineTo(cX + R * Math.sin(th), cY - R * Math.cos(th)); g.stroke();
 
-      // targets
+      // targets: drawn at the last PAINTED position; bright when just painted, fading until the next sweep
       const blink = Math.floor(t * 2) % 2;
       ac.forEach(a => {
-        const [x, y] = xy(a.e, a.n); if(x < -40 || x > W + 40 || y < -40 || y > H + 40) return;
-        const brg = (Math.atan2(a.e, a.n) + 6.2832) % 6.2832, al = RM ? 1 : 1 - ((th - brg + 6.2832) % 6.2832) / 6.2832 * 0.62;
-        a.trail.forEach(([te, tn], i) => { const [px, py] = xy(te, tn); g.fillStyle = `rgba(255,64,64,${0.15 + i * 0.08})`; g.fillRect(px - 1, py - 1, 2, 2); });
-        g.strokeStyle = `rgba(255,214,130,${al * 0.7})`; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 14 * S(a.h), y - 14 * K(a.h)); g.stroke();
-        g.shadowColor = RED; g.shadowBlur = 9; g.fillStyle = RED; g.globalAlpha = Math.max(al, 0.5);
-        g.beginPath(); g.arc(x, y, 3.4, 0, 6.2832); g.fill(); g.shadowBlur = 0; g.globalAlpha = 1;
+        const [x, y] = xy(a.pe, a.pn); if(x < -40 || x > W + 40 || y < -40 || y > H + 40) return;
+        const al = RM ? 1 : 1 - a.s / TAU * 0.75;
+        a.trail.forEach(([te, tn], i) => { const [px, py] = xy(te, tn); g.fillStyle = `rgba(255,64,64,${0.2 + i * 0.1})`; g.fillRect(px - 1.5, py - 1.5, 3, 3); });
+        g.strokeStyle = `rgba(255,214,130,${al * 0.7})`; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 14 * S(a.ph), y - 14 * K(a.ph)); g.stroke();
+        g.shadowColor = RED; g.shadowBlur = 9; g.fillStyle = RED; g.globalAlpha = Math.max(al, 0.3);
+        g.beginPath(); g.arc(x, y, 3.4, 0, TAU); g.fill(); g.shadowBlur = 0; g.globalAlpha = 1;
         const col = a.emg ? (blink ? RED : '#fff') : TXT, flip = x > W - 120, bx = x + (flip ? -12 : 12), by = y - 26;
-        if(a.emg){ g.strokeStyle = RED; g.globalAlpha = 1 - (t * 0.4 % 1); g.beginPath(); g.arc(x, y, 6 + (t * 0.4 % 1) * 14, 0, 6.2832); g.stroke(); g.globalAlpha = 1; }
+        if(a.emg){ g.strokeStyle = RED; g.globalAlpha = 1 - (t * 0.4 % 1); g.beginPath(); g.arc(x, y, 6 + (t * 0.4 % 1) * 14, 0, TAU); g.stroke(); g.globalAlpha = 1; }
         g.strokeStyle = `rgba(${AMB},0.55)`; g.beginPath(); g.moveTo(x, y); g.lineTo(bx, by + 18); g.stroke();
         g.textAlign = flip ? 'right' : 'left';
         if(a.emg){ g.strokeStyle = RED; g.strokeRect(flip ? bx - 78 : bx - 3, by - 8, 82, 38); }
-        const vs = a.vs > 0 ? '↑' : a.vs < 0 ? '↓' : '→';
-        txt(a.cs, bx, by, col, 0.95); txt('FL' + String(Math.round(a.fl)).padStart(3, '0') + vs + ' ' + a.kt, bx, by + 12, col, 0.9); txt(a.sq + (a.emg ? ' EMG' : ''), bx, by + 24, a.emg ? RED : `rgb(${AMB})`, 1);
+        const vs = a.pvs > 0 ? '↑' : a.pvs < 0 ? '↓' : '→';
+        txt(a.cs, bx, by, col, 0.95); txt('FL' + String(Math.round(a.pfl)).padStart(3, '0') + vs + ' ' + a.pkt, bx, by + 12, col, 0.9); txt(a.sq + (a.emg ? ' EMG' : ''), bx, by + 24, a.emg ? RED : `rgb(${AMB})`, 1);
       });
     }
 
@@ -2119,7 +2137,7 @@
       if(cv.offsetParent === null){ setTimeout(() => requestAnimationFrame(loop), 300); return; }   // login hidden: idle
       if(cv.width !== Math.round(innerWidth * Math.min(devicePixelRatio || 1, 2))){ size(); init(); }
       const dt = Math.min((now - last) / 1000 || 0, 0.1); last = now;
-      if(!RM){ t += dt; step(dt); }
+      if(RM) th = 5.2; else { t += dt; step(dt); }
       draw();
       RM ? setTimeout(() => requestAnimationFrame(loop), 1000) : requestAnimationFrame(loop);
     }
