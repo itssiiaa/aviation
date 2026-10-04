@@ -683,7 +683,11 @@
   }
 
   /* ---------- Login gate ---------- */
-  .login-wrap{ width:100%; max-width:640px; }
+  .login-wrap{
+    width:100%;
+    max-width:520px;
+    margin:6vh auto 0;
+  }
   body.locked .app,
   body.locked .stats-tab,
   body.locked .stats-drawer,
@@ -691,51 +695,234 @@
   body:not(.locked) #login-screen,
   body.booting #login-screen{ display:none; }
 
+  .login-card{
+    position:relative;
+    overflow:hidden;
+    border:1px solid rgba(91,113,151,.55);
+    border-radius:18px;
+    background:
+      radial-gradient(circle at 90% 5%, rgba(245,166,35,.16), transparent 34%),
+      radial-gradient(circle at 5% 95%, rgba(74,144,226,.12), transparent 36%),
+      linear-gradient(145deg, rgba(27,39,64,.98), rgba(13,20,33,.98));
+    box-shadow:0 24px 70px rgba(0,0,0,.38);
+    padding:34px;
+  }
+  .login-card::before{
+    content:"";
+    position:absolute;
+    inset:0 0 auto;
+    height:3px;
+    background:linear-gradient(90deg, var(--amber), #ffd36b, #79aef5);
+  }
+  .login-brand{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    margin-bottom:26px;
+  }
+  .login-logo{
+    width:50px;
+    height:50px;
+    flex:0 0 50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:15px;
+    background:linear-gradient(145deg, rgba(245,166,35,.22), rgba(245,166,35,.06));
+    border:1px solid rgba(245,166,35,.38);
+    color:var(--amber);
+    font-size:24px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .login-kicker{
+    margin:0 0 3px;
+    color:var(--amber);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    font-weight:600;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+  }
+  .login-title{
+    margin:0;
+    font-size:30px;
+    line-height:1.1;
+    letter-spacing:-.02em;
+  }
+  .login-sub{
+    margin:0 0 24px;
+    color:#aeb8ca;
+    font-size:14.5px;
+    line-height:1.6;
+  }
+  .login-form{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
   .login-field{
     display:flex;
     flex-direction:column;
-    gap:6px;
-    margin-bottom:14px;
-    font-size:13px;
-    color:var(--text-dim);
+    gap:7px;
+    margin-bottom:12px;
+    font-size:12px;
+    font-weight:600;
+    color:#aeb8ca;
+    letter-spacing:.02em;
   }
   .login-field input{
-    background:var(--panel-light);
-    border:1px solid var(--border);
-    border-radius:var(--radius);
+    width:100%;
+    background:rgba(8,14,24,.72);
+    border:1px solid #34435f;
+    border-radius:11px;
     color:var(--text);
-    padding:12px 14px;
+    padding:13px 14px;
     font-family:'Space Grotesk', system-ui, sans-serif;
     font-size:16px;
+    transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  }
+  .login-field input::placeholder{ color:#66738b; }
+  .login-field input:hover{ border-color:#4a5d7e; }
+  .login-field input:focus{
+    border-color:var(--amber);
+    background:rgba(8,14,24,.9);
+    box-shadow:0 0 0 3px rgba(245,166,35,.10);
+    outline:none;
+  }
+  .login-btn{
+    margin-top:4px;
+    border-radius:11px;
+    padding:14px 18px;
+    box-shadow:0 8px 24px rgba(245,166,35,.14);
+  }
+  .login-toggle{
+    display:block;
+    width:100%;
+    margin-top:16px;
+    padding:7px 4px;
+    text-align:center;
+    text-decoration:none;
+    border:none;
+    background:transparent;
+    color:#9eabc0;
+    font-size:13px;
+  }
+  .login-toggle:hover{ color:var(--amber); }
+  .login-hint{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin:20px 0 0;
+    padding-top:16px;
+    border-top:1px solid rgba(61,78,112,.6);
+    color:#69768d;
+    font-size:11.5px;
+  }
+  .login-hint-dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 10px rgba(62,175,124,.45);
   }
   .login-error{
     min-height:20px;
-    margin:0 0 12px;
-    font-size:13.5px;
+    margin:0 0 8px;
+    padding:0 2px;
+    font-size:13px;
+    line-height:1.45;
     color:var(--red);
+  }
+
+  .stats-reset{
+    width:100%;
+    margin-top:10px;
+    border-color:rgba(229,72,77,.42);
+    color:#ff8f92;
+  }
+  .stats-reset:hover{
+    border-color:var(--red);
+    background:rgba(229,72,77,.08);
+    color:#ffb5b7;
+  }
+
+  .reset-confirm{
+    margin-top:10px;
+    padding:12px;
+    border:1px solid rgba(229,72,77,.35);
+    border-radius:var(--radius);
+    background:rgba(229,72,77,.07);
+  }
+  .reset-confirm-text{
+    margin:0 0 10px;
+    color:#d7a0a2;
+    font-size:12px;
+    line-height:1.45;
+  }
+  .reset-confirm-actions{
+    display:flex;
+    gap:8px;
+  }
+  .reset-confirm-actions button{ flex:1; }
+  .reset-danger{
+    border-color:var(--red);
+    color:#ffb0b2;
+    background:rgba(229,72,77,.10);
+  }
+  .reset-danger:hover{ background:rgba(229,72,77,.17); }
+  .reset-success{ color:var(--green) !important; }
+
+  @media (max-width: 480px){
+    .login-wrap{ margin-top:2vh; }
+    .login-card{ padding:25px 20px; border-radius:15px; }
+    .login-title{ font-size:27px; }
   }
 </style>
 </head>
 <body class="locked booting">
 
 <div class="login-wrap" id="login-screen">
-  <div class="panel">
-    <h1 class="start-title">Flight Check</h1>
-    <p class="start-sub" id="login-sub">Log in to continue.</p>
-    <form id="login-form" autocomplete="on">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="login-logo" aria-hidden="true">✈</div>
+      <div>
+        <p class="login-kicker">FLIGHT TRAINING</p>
+        <h1 class="login-title">Flight Check</h1>
+      </div>
+    </div>
+
+    <p class="login-sub" id="login-sub">Welcome back. Log in to continue your training.</p>
+
+    <form id="login-form" class="login-form" autocomplete="on">
       <label class="login-field">Username
-        <input type="text" id="login-user" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        <input type="text" id="login-user" name="username" autocomplete="username"
+          autocapitalize="none" autocorrect="off" spellcheck="false"
+          placeholder="Enter your username" required>
       </label>
+
       <label class="login-field">Password
-        <input type="password" id="login-pass" name="password" autocomplete="current-password" required>
+        <input type="password" id="login-pass" name="password"
+          autocomplete="current-password" placeholder="Enter your password" required>
       </label>
+
       <label class="login-field hidden" id="login-confirm-wrap">Confirm password
-        <input type="password" id="login-pass2" name="password2" autocomplete="new-password">
+        <input type="password" id="login-pass2" name="password2"
+          autocomplete="new-password" placeholder="Repeat your password">
       </label>
+
       <p class="login-error" id="login-error" role="alert"></p>
-      <button class="primary-btn" id="login-btn" type="submit">Log in</button>
+      <button class="primary-btn login-btn" id="login-btn" type="submit">Log in</button>
     </form>
-    <button class="change-subject-btn" id="login-toggle" type="button">No account yet? Create one</button>
+
+    <button class="login-toggle" id="login-toggle" type="button">
+      No account yet? Create one
+    </button>
+
+    <div class="login-hint">
+      <span class="login-hint-dot" aria-hidden="true"></span>
+      Your training statistics sync securely with your account
+    </div>
   </div>
 </div>
 
@@ -906,7 +1093,22 @@
   </div>
   <div class="stats-cloud">
     <div class="stats-cloud-status" id="stats-cloud-status">Saved on this device only.</div>
-    <button class="ghost-btn" id="stats-logout" type="button">Log out</button>
+
+    <button class="ghost-btn stats-reset" id="stats-reset" type="button">
+      Reset all statistics
+    </button>
+
+    <div class="reset-confirm hidden" id="reset-confirm">
+      <p class="reset-confirm-text">
+        This will permanently clear your missed-question counts for this account on this device and in the cloud.
+      </p>
+      <div class="reset-confirm-actions">
+        <button class="ghost-btn" id="reset-cancel" type="button">Cancel</button>
+        <button class="ghost-btn reset-danger" id="reset-confirm-btn" type="button">Yes, reset</button>
+      </div>
+    </div>
+
+    <button class="ghost-btn" id="stats-logout" type="button" style="margin-top:10px;">Log out</button>
   </div>
 </aside>
 
@@ -1386,6 +1588,21 @@
       return Object.values(this.data[subject] || {}).reduce((a, b) => a + b, 0);
     },
 
+    async resetAll(){
+      // Clear the local copy immediately.
+      this.data = { aero: {}, instr: {} };
+      this.save();
+      this.render();
+
+      // Clear the cloud copy when an authenticated connection is available.
+      if(this.cloud && this.user){
+        await this.cloud.reset();
+      }
+
+      this.setCloudMsg(this.user ? 'Statistics reset and synced.' : 'Statistics reset on this device.', false);
+      this.render();
+    },
+
     // ----- cloud wiring (called from the Firebase module) -----
     attachCloud(cloud){ this.cloud = cloud; },
     errText(err){
@@ -1505,6 +1722,10 @@
 
     open(){
       if(currentSubject && SUBJECTS[currentSubject]) this.viewSubject = currentSubject;
+      const resetConfirm = document.getElementById('reset-confirm');
+      const resetBtn = document.getElementById('stats-reset');
+      if(resetConfirm) resetConfirm.classList.add('hidden');
+      if(resetBtn) resetBtn.classList.remove('hidden');
       this.render();
       document.getElementById('stats-drawer').classList.add('open');
       document.getElementById('stats-backdrop').classList.remove('hidden');
@@ -1626,6 +1847,47 @@
     btn.disabled = false;
   });
 
+  const resetBtn = document.getElementById('stats-reset');
+  const resetConfirm = document.getElementById('reset-confirm');
+  const resetCancel = document.getElementById('reset-cancel');
+  const resetConfirmBtn = document.getElementById('reset-confirm-btn');
+
+  resetBtn.addEventListener('click', () => {
+    resetConfirm.classList.remove('hidden');
+    resetBtn.classList.add('hidden');
+    resetConfirmBtn.focus();
+  });
+
+  resetCancel.addEventListener('click', () => {
+    resetConfirm.classList.add('hidden');
+    resetBtn.classList.remove('hidden');
+    resetBtn.focus();
+  });
+
+  resetConfirmBtn.addEventListener('click', async () => {
+    resetConfirmBtn.disabled = true;
+    resetCancel.disabled = true;
+    resetConfirmBtn.textContent = 'Resetting…';
+
+    try{
+      await Stats.resetAll();
+      resetConfirm.classList.add('hidden');
+      resetBtn.classList.remove('hidden');
+      resetBtn.textContent = 'Statistics reset ✓';
+      resetBtn.classList.add('reset-success');
+      setTimeout(() => {
+        resetBtn.textContent = 'Reset all statistics';
+        resetBtn.classList.remove('reset-success');
+      }, 2200);
+    }catch(err){
+      Stats.setCloudMsg('Reset failed: ' + Stats.errText(err), true);
+      resetConfirmBtn.textContent = 'Yes, reset';
+    }
+
+    resetConfirmBtn.disabled = false;
+    resetCancel.disabled = false;
+  });
+
   document.getElementById('stats-logout').addEventListener('click', async () => {
     try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
     if(Stats.cloud && Stats.user){
@@ -1696,7 +1958,13 @@
         ref(subj),
         { wrong: map, updatedAt: F.serverTimestamp() },
         { merge: true }
-      )
+      ),
+      reset: async () => {
+        await Promise.all([
+          F.deleteDoc(ref('aero')),
+          F.deleteDoc(ref('instr'))
+        ]);
+      }
     });
     A.onAuthStateChanged(auth, (u) => Stats.onAuth(u));
   }catch(err){
