@@ -680,9 +680,63 @@
   @media (max-width: 480px){
     .stats-tab{ padding:14px 8px; }
   }
+
+  /* ---------- Login gate ---------- */
+  body.locked .app,
+  body.locked .stats-tab,
+  body.locked .stats-drawer,
+  body.locked .stats-backdrop{ display:none !important; }
+  body:not(.locked) #login-screen,
+  body.booting #login-screen{ display:none; }
+
+  .login-field{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:14px;
+    font-size:13px;
+    color:var(--text-dim);
+  }
+  .login-field input{
+    background:var(--panel-light);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    color:var(--text);
+    padding:12px 14px;
+    font-family:'Space Grotesk', system-ui, sans-serif;
+    font-size:16px;
+  }
+  .login-error{
+    min-height:20px;
+    margin:0 0 12px;
+    font-size:13.5px;
+    color:var(--red);
+  }
 </style>
 </head>
-<body>
+<body class="locked booting">
+
+<div class="app" id="login-screen">
+  <div class="panel">
+    <h1 class="start-title">Flight Check</h1>
+    <p class="start-sub" id="login-sub">Log in to continue.</p>
+    <form id="login-form" autocomplete="on">
+      <label class="login-field">Username
+        <input type="text" id="login-user" name="username" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+      </label>
+      <label class="login-field">Password
+        <input type="password" id="login-pass" name="password" autocomplete="current-password" required>
+      </label>
+      <label class="login-field hidden" id="login-confirm-wrap">Confirm password
+        <input type="password" id="login-pass2" name="password2" autocomplete="new-password">
+      </label>
+      <p class="login-error" id="login-error" role="alert"></p>
+      <button class="primary-btn" id="login-btn" type="submit">Log in</button>
+    </form>
+    <button class="change-subject-btn" id="login-toggle" type="button">No account yet? Create one</button>
+  </div>
+</div>
+
 
 <div class="app">
 
@@ -850,8 +904,7 @@
   </div>
   <div class="stats-cloud">
     <div class="stats-cloud-status" id="stats-cloud-status">Saved on this device only.</div>
-    <button class="ghost-btn hidden" id="stats-signin" type="button">Sign in with Google to sync</button>
-    <button class="ghost-btn hidden" id="stats-signout" type="button">Sign out</button>
+    <button class="ghost-btn" id="stats-logout" type="button">Log out</button>
   </div>
 </aside>
 
@@ -1285,14 +1338,17 @@
   });
 
   // ======================= Stats: wrong-answer tracker =======================
-  // Counts live in localStorage (works offline / without Firebase) and, when the
-  // user signs in, are also synced to Firestore under users/{uid}/stats/{subject}.
+  // Counts are saved on this device (localStorage) and, once logged in, synced to
+  // Firestore under users/{uid}/stats/{subject} so every device shows the same numbers.
   const STATS_KEY = 'flightcheck.wrongCounts.v1';
+  const SESSION_KEY = 'flightcheck.session.v1';       // lets you keep using the quiz offline
+  const LOGIN_DOMAIN = '@atplquiz.app';                // username -> internal Firebase email
 
   const Stats = {
     data: { aero: {}, instr: {} },
     cloud: null,
     user: null,
+    cloudFailed: false,
     viewSubject: 'aero',
     cloudMsg: '',
     cloudErr: false,
@@ -1324,16 +1380,12 @@
         this.cloud.increment(subject, number).catch(err => this.setCloudMsg('Cloud save failed: ' + this.errText(err), true));
       }
     },
-
     totalFor(subject){
       return Object.values(this.data[subject] || {}).reduce((a, b) => a + b, 0);
     },
 
     // ----- cloud wiring (called from the Firebase module) -----
-    attachCloud(cloud){
-      this.cloud = cloud;
-      this.renderCloud();
-    },
+    attachCloud(cloud){ this.cloud = cloud; },
     errText(err){
       return (err && (err.code || err.message)) ? String(err.code || err.message) : 'unknown error';
     },
@@ -1342,7 +1394,7 @@
       this.cloudErr = !!isErr;
       this.renderCloud();
     },
-    // Adopt the larger of local/remote for each question. Optionally push local-only progress up.
+    // Keep the larger count per question from local/remote. Optionally push local-only progress up.
     async syncFromCloud(pushLocalAhead){
       if(!this.cloud || !this.user) return;
       try{
@@ -1359,9 +1411,7 @@
             if(merged[n] > (parseInt(r[n], 10) || 0)) needPush = true;
           });
           this.data[subj] = merged;
-          if(pushLocalAhead && needPush){
-            await this.cloud.set(subj, merged);
-          }
+          if(pushLocalAhead && needPush) await this.cloud.set(subj, merged);
         }
         this.save();
         this.setCloudMsg('', false);
@@ -1370,10 +1420,32 @@
         this.setCloudMsg('Sync failed: ' + this.errText(err), true);
       }
     },
+    // Firebase tells us who is signed in (also fires on every page load with the saved session)
     onAuth(user){
       this.user = user || null;
-      this.renderCloud();
-      if(user) this.syncFromCloud(true);
+      document.body.classList.remove('booting');
+      if(user){
+        try{ localStorage.setItem(SESSION_KEY, '1'); }catch(e){}
+        unlockApp();
+        this.renderCloud();
+        this.syncFromCloud(true);
+      } else {
+        lockApp();
+        this.renderCloud();
+      }
+    },
+    // Firebase could not be loaded (offline, blocked, no VPN)
+    onCloudUnavailable(err){
+      this.cloudFailed = true;
+      document.body.classList.remove('booting');
+      let had = false;
+      try{ had = localStorage.getItem(SESSION_KEY) === '1'; }catch(e){}
+      if(had){
+        unlockApp();                       // you logged in before: keep quiz + local stats usable
+        this.setCloudMsg('Offline. Showing saved stats from this device.', true);
+      } else {
+        this.renderCloud();
+      }
     },
 
     // ----- rendering -----
@@ -1422,25 +1494,11 @@
 
     renderCloud(){
       const status = document.getElementById('stats-cloud-status');
-      const inBtn = document.getElementById('stats-signin');
-      const outBtn = document.getElementById('stats-signout');
       if(!status) return;
       status.classList.toggle('err', this.cloudErr);
-      inBtn.classList.add('hidden');
-      outBtn.classList.add('hidden');
-
-      if(this.cloudMsg){
-        status.textContent = this.cloudMsg;
-      } else if(!this.cloud){
-        status.textContent = 'Saved on this device only.';
-      } else if(!this.user){
-        status.textContent = 'Saved on this device. Sign in to sync across devices.';
-      } else {
-        status.textContent = 'Synced to your account' + (this.user.email ? ' (' + this.user.email + ')' : '') + '.';
-      }
-      if(this.cloud){
-        (this.user ? outBtn : inBtn).classList.remove('hidden');
-      }
+      if(this.cloudMsg) status.textContent = this.cloudMsg;
+      else if(this.user) status.textContent = 'Synced online.';
+      else status.textContent = 'Saved on this device only.';
     },
 
     open(){
@@ -1461,6 +1519,14 @@
     }
   };
 
+  function unlockApp(){ document.body.classList.remove('locked'); }
+  function lockApp(){
+    document.body.classList.add('locked');
+    Stats.close();
+    document.getElementById('login-pass').value = '';
+    if(typeof setLoginMode === 'function') setLoginMode('login');
+  }
+
   Stats.load();
   Stats.render();
   Stats.renderCloud();
@@ -1471,26 +1537,109 @@
   document.querySelectorAll('.stats-subject-btn').forEach(b => {
     b.addEventListener('click', () => { Stats.viewSubject = b.dataset.statsSubject; Stats.render(); });
   });
-  document.getElementById('stats-signin').addEventListener('click', () => {
-    if(!Stats.cloud) return;
-    Stats.setCloudMsg('', false);
-    Stats.cloud.signIn().catch(err => {
-      if(err && err.code === 'auth/popup-closed-by-user') return;
-      Stats.setCloudMsg('Sign-in failed: ' + Stats.errText(err), true);
-    });
-  });
-  document.getElementById('stats-signout').addEventListener('click', () => {
-    if(Stats.cloud) Stats.cloud.signOut();
-  });
   document.addEventListener('keydown', (e) => {
     if(e.key === 'Escape' && document.getElementById('stats-drawer').classList.contains('open')) Stats.close();
   });
+
+  // ======================= Login / Create account (checked by Firebase) =======================
+  let loginMode = 'login';   // 'login' | 'signup'
+
+  function setLoginMode(mode){
+    loginMode = mode;
+    const signup = mode === 'signup';
+    document.getElementById('login-sub').textContent = signup
+      ? 'Create your account. Your stats are saved online under it.'
+      : 'Log in to continue.';
+    document.getElementById('login-btn').textContent = signup ? 'Create account' : 'Log in';
+    document.getElementById('login-toggle').textContent = signup
+      ? 'Already have an account? Log in'
+      : 'No account yet? Create one';
+    document.getElementById('login-confirm-wrap').classList.toggle('hidden', !signup);
+    document.getElementById('login-pass2').required = signup;
+    document.getElementById('login-pass').autocomplete = signup ? 'new-password' : 'current-password';
+    document.getElementById('login-error').textContent = '';
+  }
+  document.getElementById('login-toggle').addEventListener('click', () => {
+    setLoginMode(loginMode === 'login' ? 'signup' : 'login');
+  });
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+    err.textContent = '';
+
+    if(!Stats.cloud){
+      err.textContent = Stats.cloudFailed
+        ? "Can't reach the server. Check your connection or VPN, then reload the page."
+        : 'Still connecting… try again in a moment.';
+      return;
+    }
+
+    const username = document.getElementById('login-user').value.trim().toLowerCase();
+    const password = document.getElementById('login-pass').value;
+
+    if(loginMode === 'signup'){
+      if(!/^[a-z0-9._-]{3,20}$/.test(username)){
+        err.textContent = 'Username: 3–20 characters, letters, numbers, dot, dash or underscore.';
+        return;
+      }
+      if(password.length < 6){
+        err.textContent = 'Password must be at least 6 characters.';
+        return;
+      }
+      if(password !== document.getElementById('login-pass2').value){
+        err.textContent = "Passwords don't match.";
+        return;
+      }
+    }
+
+    btn.disabled = true;
+    try{
+      if(loginMode === 'signup') await Stats.cloud.signUp(username + LOGIN_DOMAIN, password);
+      else await Stats.cloud.signIn(username + LOGIN_DOMAIN, password);
+      // onAuth() unlocks the app
+      document.getElementById('login-pass').value = '';
+      document.getElementById('login-pass2').value = '';
+    }catch(x){
+      const code = x && x.code;
+      if(['auth/invalid-credential','auth/wrong-password','auth/user-not-found'].includes(code)){
+        err.textContent = 'Wrong username or password.';
+      } else if(code === 'auth/email-already-in-use'){
+        err.textContent = 'That username is already taken. Pick another, or log in.';
+      } else if(code === 'auth/weak-password'){
+        err.textContent = 'Password is too weak. Use at least 6 characters.';
+      } else if(code === 'auth/invalid-email'){
+        err.textContent = 'That username is not valid.';
+      } else if(code === 'auth/operation-not-allowed'){
+        err.textContent = 'Email/Password sign-in is not enabled in Firebase yet.';
+      } else if(code === 'auth/network-request-failed'){
+        err.textContent = "Can't reach the server. Check your connection or VPN.";
+      } else if(code === 'auth/too-many-requests'){
+        err.textContent = 'Too many attempts. Wait a few minutes and try again.';
+      } else {
+        err.textContent = 'Failed: ' + Stats.errText(x);
+      }
+    }
+    btn.disabled = false;
+  });
+
+  document.getElementById('stats-logout').addEventListener('click', async () => {
+    try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+    if(Stats.cloud && Stats.user){
+      try{ await Stats.cloud.signOut(); }catch(e){}
+    } else {
+      lockApp();
+    }
+  });
+
+  // if Firebase takes too long to answer, show the login screen anyway
+  setTimeout(() => document.body.classList.remove('booting'), 8000);
 </script>
 
-<!-- ===================== FIREBASE (optional cloud sync) =====================
-     Paste your Firebase web-app config below. These values are NOT secrets —
-     they only identify your project. Your data is protected by Firebase Auth
-     plus the Firestore rules in firestore.rules (see SETUP.md). -->
+<!-- ===================== FIREBASE (online stats) =====================
+     These config values are public identifiers, not passwords. Your data is
+     protected by the login plus the Firestore rules in firestore.rules. -->
 <script>
   window.FIREBASE_CONFIG = {
     apiKey: "AIzaSyC0gmjCQhGqia4cufSw8ab8qcGViMiYoBk",
@@ -1500,47 +1649,45 @@
   };
 </script>
 <script type="module">
-  const cfg = window.FIREBASE_CONFIG;
-  if(cfg && cfg.apiKey && cfg.projectId){
-    try{
-      const V = '10.14.1';
-      const [{ initializeApp }, A, F] = await Promise.all([
-        import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
-        import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
-        import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)
-      ]);
+  try{
+    const V = '10.14.1';
+    const [{ initializeApp }, A, F] = await Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
+      import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)
+    ]);
 
-      const app  = initializeApp(cfg);
-      const auth = A.getAuth(app);
-      const db   = F.getFirestore(app);
-      const ref  = (subj) => F.doc(db, 'users', auth.currentUser.uid, 'stats', subj);
+    const app  = initializeApp(window.FIREBASE_CONFIG);
+    const auth = A.getAuth(app);
+    const db   = F.getFirestore(app);
+    const ref  = (subj) => F.doc(db, 'users', auth.currentUser.uid, 'stats', subj);
 
-      Stats.attachCloud({
-        signIn:  () => A.signInWithPopup(auth, new A.GoogleAuthProvider()),
-        signOut: () => A.signOut(auth),
-        async pull(){
-          const out = {};
-          for(const subj of ['aero', 'instr']){
-            const snap = await F.getDoc(ref(subj));
-            out[subj] = snap.exists() ? (snap.data().wrong || {}) : {};
-          }
-          return out;
-        },
-        increment: (subj, n) => F.setDoc(
-          ref(subj),
-          { wrong: { [String(n)]: F.increment(1) }, updatedAt: F.serverTimestamp() },
-          { merge: true }
-        ),
-        set: (subj, map) => F.setDoc(
-          ref(subj),
-          { wrong: map, updatedAt: F.serverTimestamp() },
-          { merge: true }
-        )
-      });
-      A.onAuthStateChanged(auth, (u) => Stats.onAuth(u));
-    }catch(err){
-      Stats.setCloudMsg('Cloud sync unavailable: ' + Stats.errText(err), true);
-    }
+    Stats.attachCloud({
+      signIn:  (email, password) => A.signInWithEmailAndPassword(auth, email, password),
+      signUp:  (email, password) => A.createUserWithEmailAndPassword(auth, email, password),
+      signOut: () => A.signOut(auth),
+      async pull(){
+        const out = {};
+        for(const subj of ['aero', 'instr']){
+          const snap = await F.getDoc(ref(subj));
+          out[subj] = snap.exists() ? (snap.data().wrong || {}) : {};
+        }
+        return out;
+      },
+      increment: (subj, n) => F.setDoc(
+        ref(subj),
+        { wrong: { [String(n)]: F.increment(1) }, updatedAt: F.serverTimestamp() },
+        { merge: true }
+      ),
+      set: (subj, map) => F.setDoc(
+        ref(subj),
+        { wrong: map, updatedAt: F.serverTimestamp() },
+        { merge: true }
+      )
+    });
+    A.onAuthStateChanged(auth, (u) => Stats.onAuth(u));
+  }catch(err){
+    Stats.onCloudUnavailable(err);
   }
 </script>
 
