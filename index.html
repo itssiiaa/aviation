@@ -876,17 +876,30 @@
     text-align:center;
   }
 
+  html:has(body.locked),
+  body.locked{
+    overflow:hidden;
+    overscroll-behavior:none;
+    touch-action:manipulation;
+    height:100%;
+    max-height:100%;
+  }
   body.locked{
     padding:0;
     align-items:stretch;
     justify-content:stretch;
   }
   body.locked .login-wrap{
+    position:fixed;
+    inset:0;
     max-width:none;
     width:100%;
-    min-height:100svh;
-    min-height:100dvh;
-    overflow:auto;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+  }
+  body.locked .login-bg{
+    position:absolute;
   }
 
   @media (min-width: 1000px){
@@ -924,8 +937,8 @@
     .login-toggle{ margin-top:12px; padding:10px 6px; }
     .login-foot{
       max-width:none;
-      margin:10px 0 0;
-      padding:0 12px calc(8px + env(safe-area-inset-bottom));
+      margin:8px 0 0;
+      padding:0 12px 4px;
     }
   }
   @media (max-width: 799px) and (orientation: landscape){
@@ -2132,7 +2145,14 @@
     }
     function size(){
       const dpr = Math.min(devicePixelRatio || 1, 2);
-      W = innerWidth; H = innerHeight;
+      const box = cv.parentElement.getBoundingClientRect();
+      const nw = Math.max(1, Math.round(box.width || innerWidth));
+      const nh = Math.max(1, Math.round(box.height || innerHeight));
+      const widthJump = !W || Math.abs(nw - W) > 2;
+      const heightJump = !H || Math.abs(nh - H) > 80;
+      if(!widthJump && !heightJump && cv.width) return false;
+      const rotated = W && Math.abs(nw - W) > 80;
+      W = nw; H = nh;
       cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
       const phone = W < 800;
       const landscape = phone && W > H;
@@ -2141,15 +2161,16 @@
         cX = W * 0.28;
         cY = H * 0.50;
       } else if(phone){
-        R = Math.min(W * 0.46, H * 0.30);
+        R = W * 0.46;
         cX = W * 0.50;
-        cY = Math.max(R + 18, H * 0.26);
+        cY = R + 18;
       } else {
         R = Math.max(Math.min(W, H) * 0.45, H * 0.40);
         cX = W >= 1000 ? W * 0.36 : W / 2;
         cY = H / 2;
       }
       PX = R / RANGE;
+      return rotated;
     }
 
     function step(dt){
@@ -2255,14 +2276,15 @@
 
     function loop(now){
       if(cv.offsetParent === null){ setTimeout(() => requestAnimationFrame(loop), 300); return; }   // login hidden: idle
-      if(cv.width !== Math.round(innerWidth * Math.min(devicePixelRatio || 1, 2))){ size(); init(); }
+      if(size()) init();
       const dt = Math.min((now - last) / 1000 || 0, 0.1); last = now;
       if(RM) th = 5.2; else { t += dt; step(dt); }
       draw();
       RM ? setTimeout(() => requestAnimationFrame(loop), 1000) : requestAnimationFrame(loop);
     }
     size(); init(); requestAnimationFrame(loop);
-    addEventListener('resize', () => { size(); init(); });
+    addEventListener('resize', () => { if(size()) init(); });
+    addEventListener('orientationchange', () => { size(); init(); });
   })();
 </script>
 
