@@ -1635,7 +1635,18 @@
   });
 
   // if Firebase takes too long to answer, show the login screen anyway
-  setTimeout(() => document.body.classList.remove('booting'), 8000);
+  // If Firebase is slow or blocked (e.g. no VPN): stop waiting after 4s.
+  // Already logged in on this device before? Open the quiz offline with the saved stats.
+  setTimeout(() => {
+    if(!document.body.classList.contains('booting')) return;
+    document.body.classList.remove('booting');
+    let had = false;
+    try{ had = localStorage.getItem(SESSION_KEY) === '1'; }catch(e){}
+    if(had && !Stats.user){
+      unlockApp();
+      Stats.setCloudMsg('Offline. Showing saved stats from this device.', true);
+    }
+  }, 4000);
 </script>
 
 <!-- ===================== FIREBASE (online stats) =====================
