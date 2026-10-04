@@ -500,6 +500,186 @@
   @media (prefers-reduced-motion: reduce){
     *{ transition:none !important; }
   }
+
+  /* ---------- Stats tab (right side) ---------- */
+  .stats-tab{
+    position:fixed;
+    right:0;
+    top:50%;
+    transform:translateY(-50%);
+    z-index:40;
+    writing-mode:vertical-rl;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-right:none;
+    border-radius:var(--radius) 0 0 var(--radius);
+    color:var(--text);
+    padding:16px 9px;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:0.04em;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .stats-tab:hover{ border-color:var(--amber); background:var(--panel-light); }
+  .stats-tab-count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--amber);
+  }
+
+  .stats-backdrop{
+    position:fixed;
+    inset:0;
+    z-index:45;
+    background:rgba(5,8,14,0.55);
+  }
+
+  .stats-drawer{
+    position:fixed;
+    top:0;
+    right:0;
+    height:100vh;
+    width:min(380px, 92vw);
+    z-index:50;
+    display:flex;
+    flex-direction:column;
+    background:var(--panel);
+    border-left:1px solid var(--border);
+    box-shadow:-12px 0 40px rgba(0,0,0,0.35);
+    transform:translateX(100%);
+    visibility:hidden;
+    transition:transform .22s ease, visibility 0s linear .22s;
+  }
+  .stats-drawer.open{
+    transform:none;
+    visibility:visible;
+    transition:transform .22s ease, visibility 0s;
+  }
+
+  .stats-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:18px 20px 14px;
+    border-bottom:1px solid var(--border);
+  }
+  .stats-title{ font-size:17px; font-weight:600; margin:0; }
+  .stats-close{
+    background:transparent;
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    color:var(--text-dim);
+    width:32px;
+    height:32px;
+    font-size:16px;
+    line-height:1;
+  }
+  .stats-close:hover{ color:var(--text); border-color:var(--border-bright); }
+
+  .stats-body{
+    flex:1;
+    overflow-y:auto;
+    padding:16px 20px 20px;
+  }
+
+  .stats-subject-toggle{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .stats-subject-btn{
+    background:var(--panel-light);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    color:var(--text-dim);
+    font-size:13px;
+    font-weight:500;
+    padding:9px 10px;
+  }
+  .stats-subject-btn:hover{ border-color:var(--border-bright); }
+  .stats-subject-btn.selected{
+    border-color:var(--amber);
+    background:rgba(245,166,35,0.08);
+    color:var(--text);
+  }
+
+  .stats-summary{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .stats-summary .stat-box{ padding:12px 14px; }
+  .stats-summary .strip-value{ font-size:20px; }
+
+  .stats-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .stats-row{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    background:var(--panel-light);
+    padding:10px 12px;
+  }
+  .stats-row-count{
+    flex:0 0 auto;
+    min-width:42px;
+    text-align:center;
+    border:1px solid var(--red);
+    border-radius:4px;
+    background:rgba(229,72,77,0.10);
+    color:var(--red);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    font-weight:600;
+    padding:4px 6px;
+  }
+  .stats-row-main{ flex:1; min-width:0; }
+  .stats-row-num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    color:var(--text-dim);
+    margin-bottom:3px;
+  }
+  .stats-row-q{
+    font-size:13px;
+    line-height:1.45;
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+  }
+  .stats-empty{
+    font-size:13.5px;
+    color:var(--text-dim);
+    line-height:1.55;
+  }
+
+  .stats-cloud{
+    border-top:1px solid var(--border);
+    padding:14px 20px 18px;
+  }
+  .stats-cloud-status{
+    font-size:12.5px;
+    color:var(--text-dim);
+    line-height:1.5;
+    margin-bottom:10px;
+  }
+  .stats-cloud-status.err{ color:var(--red); }
+  .stats-cloud .ghost-btn{ width:100%; }
+
+  @media (max-width: 480px){
+    .stats-tab{ padding:14px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -640,6 +820,40 @@
   </div>
 
 </div>
+
+<!-- ===================== STATS TAB (right side) ===================== -->
+<button class="stats-tab" id="stats-tab" type="button" aria-controls="stats-drawer" aria-expanded="false">
+  <span>Stats</span><span class="stats-tab-count" id="stats-tab-count">0</span>
+</button>
+<div class="stats-backdrop hidden" id="stats-backdrop"></div>
+<aside class="stats-drawer" id="stats-drawer" aria-label="Wrong answer statistics">
+  <div class="stats-head">
+    <h2 class="stats-title">Missed questions</h2>
+    <button class="stats-close" id="stats-close" type="button" aria-label="Close stats">✕</button>
+  </div>
+  <div class="stats-body">
+    <div class="stats-subject-toggle">
+      <button class="stats-subject-btn" type="button" data-stats-subject="aero">Aerodynamics</button>
+      <button class="stats-subject-btn" type="button" data-stats-subject="instr">Instrumentation</button>
+    </div>
+    <div class="stats-summary">
+      <div class="stat-box">
+        <div class="strip-label">Total misses</div>
+        <div class="strip-value amber mono" id="stats-total">0</div>
+      </div>
+      <div class="stat-box">
+        <div class="strip-label">Different questions</div>
+        <div class="strip-value amber mono" id="stats-distinct">0</div>
+      </div>
+    </div>
+    <div class="stats-list" id="stats-list"></div>
+  </div>
+  <div class="stats-cloud">
+    <div class="stats-cloud-status" id="stats-cloud-status">Saved on this device only.</div>
+    <button class="ghost-btn hidden" id="stats-signin" type="button">Sign in with Google to sync</button>
+    <button class="ghost-btn hidden" id="stats-signout" type="button">Sign out</button>
+  </div>
+</aside>
 
 <script>
   const SUBJECTS = {
@@ -909,6 +1123,7 @@
       isCorrect
     };
 
+    if(!isCorrect) Stats.recordWrong(currentSubject, q.number);
     renderBreaker();
     updateFinishBtn();
     nextBtn.textContent = currentIndex === sessionQuestions.length - 1 ? 'Finish →' : 'Next question →';
@@ -1068,6 +1283,265 @@
     screenEnd.classList.add('hidden');
     screenStart.classList.remove('hidden');
   });
+
+  // ======================= Stats: wrong-answer tracker =======================
+  // Counts live in localStorage (works offline / without Firebase) and, when the
+  // user signs in, are also synced to Firestore under users/{uid}/stats/{subject}.
+  const STATS_KEY = 'flightcheck.wrongCounts.v1';
+
+  const Stats = {
+    data: { aero: {}, instr: {} },
+    cloud: null,
+    user: null,
+    viewSubject: 'aero',
+    cloudMsg: '',
+    cloudErr: false,
+
+    load(){
+      try{
+        const raw = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+        Object.keys(this.data).forEach(k => {
+          const src = raw && raw[k];
+          if(src && typeof src === 'object'){
+            Object.keys(src).forEach(n => {
+              const v = parseInt(src[n], 10);
+              if(v > 0) this.data[k][n] = v;
+            });
+          }
+        });
+      }catch(e){}
+    },
+    save(){
+      try{ localStorage.setItem(STATS_KEY, JSON.stringify(this.data)); }catch(e){}
+    },
+
+    recordWrong(subject, number){
+      if(!this.data[subject]) return;
+      this.data[subject][number] = (this.data[subject][number] || 0) + 1;
+      this.save();
+      this.render();
+      if(this.cloud && this.user){
+        this.cloud.increment(subject, number).catch(err => this.setCloudMsg('Cloud save failed: ' + this.errText(err), true));
+      }
+    },
+
+    totalFor(subject){
+      return Object.values(this.data[subject] || {}).reduce((a, b) => a + b, 0);
+    },
+
+    // ----- cloud wiring (called from the Firebase module) -----
+    attachCloud(cloud){
+      this.cloud = cloud;
+      this.renderCloud();
+    },
+    errText(err){
+      return (err && (err.code || err.message)) ? String(err.code || err.message) : 'unknown error';
+    },
+    setCloudMsg(msg, isErr){
+      this.cloudMsg = msg || '';
+      this.cloudErr = !!isErr;
+      this.renderCloud();
+    },
+    // Adopt the larger of local/remote for each question. Optionally push local-only progress up.
+    async syncFromCloud(pushLocalAhead){
+      if(!this.cloud || !this.user) return;
+      try{
+        const remote = await this.cloud.pull();
+        for(const subj of Object.keys(this.data)){
+          const r = remote[subj] || {};
+          const merged = Object.assign({}, this.data[subj]);
+          let needPush = false;
+          Object.keys(r).forEach(n => {
+            const rv = parseInt(r[n], 10) || 0;
+            if(rv > (merged[n] || 0)) merged[n] = rv;
+          });
+          Object.keys(merged).forEach(n => {
+            if(merged[n] > (parseInt(r[n], 10) || 0)) needPush = true;
+          });
+          this.data[subj] = merged;
+          if(pushLocalAhead && needPush){
+            await this.cloud.set(subj, merged);
+          }
+        }
+        this.save();
+        this.setCloudMsg('', false);
+        this.render();
+      }catch(err){
+        this.setCloudMsg('Sync failed: ' + this.errText(err), true);
+      }
+    },
+    onAuth(user){
+      this.user = user || null;
+      this.renderCloud();
+      if(user) this.syncFromCloud(true);
+    },
+
+    // ----- rendering -----
+    render(){
+      const total = this.totalFor('aero') + this.totalFor('instr');
+      const tabCount = document.getElementById('stats-tab-count');
+      if(tabCount) tabCount.textContent = total;
+
+      document.querySelectorAll('.stats-subject-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.statsSubject === this.viewSubject);
+      });
+
+      const subj = this.viewSubject;
+      const counts = this.data[subj] || {};
+      const entries = Object.keys(counts)
+        .map(n => ({ number: parseInt(n, 10), count: counts[n] }))
+        .filter(e => e.count > 0)
+        .sort((a, b) => b.count - a.count || a.number - b.number);
+
+      document.getElementById('stats-total').textContent = this.totalFor(subj);
+      document.getElementById('stats-distinct').textContent = entries.length;
+
+      const list = document.getElementById('stats-list');
+      list.innerHTML = '';
+      if(!entries.length){
+        const p = document.createElement('p');
+        p.className = 'stats-empty';
+        p.textContent = 'No wrong answers recorded for this subject yet. Every question you miss will show up here with a count.';
+        list.appendChild(p);
+        return;
+      }
+      const qs = SUBJECTS[subj].questions;
+      entries.forEach(e => {
+        const q = qs.find(x => x.number === e.number);
+        const row = document.createElement('div');
+        row.className = 'stats-row';
+        row.innerHTML = `
+          <div class="stats-row-count" title="Times answered wrong">×${e.count}</div>
+          <div class="stats-row-main">
+            <div class="stats-row-num">Q# ${e.number} from source</div>
+            <div class="stats-row-q">${q ? escapeHtml(q.question) : ''}</div>
+          </div>`;
+        list.appendChild(row);
+      });
+    },
+
+    renderCloud(){
+      const status = document.getElementById('stats-cloud-status');
+      const inBtn = document.getElementById('stats-signin');
+      const outBtn = document.getElementById('stats-signout');
+      if(!status) return;
+      status.classList.toggle('err', this.cloudErr);
+      inBtn.classList.add('hidden');
+      outBtn.classList.add('hidden');
+
+      if(this.cloudMsg){
+        status.textContent = this.cloudMsg;
+      } else if(!this.cloud){
+        status.textContent = 'Saved on this device only.';
+      } else if(!this.user){
+        status.textContent = 'Saved on this device. Sign in to sync across devices.';
+      } else {
+        status.textContent = 'Synced to your account' + (this.user.email ? ' (' + this.user.email + ')' : '') + '.';
+      }
+      if(this.cloud){
+        (this.user ? outBtn : inBtn).classList.remove('hidden');
+      }
+    },
+
+    open(){
+      if(currentSubject && SUBJECTS[currentSubject]) this.viewSubject = currentSubject;
+      this.render();
+      document.getElementById('stats-drawer').classList.add('open');
+      document.getElementById('stats-backdrop').classList.remove('hidden');
+      document.getElementById('stats-tab').setAttribute('aria-expanded', 'true');
+      document.getElementById('stats-close').focus();
+      if(this.cloud && this.user) this.syncFromCloud(false);
+    },
+    close(){
+      document.getElementById('stats-drawer').classList.remove('open');
+      document.getElementById('stats-backdrop').classList.add('hidden');
+      const tab = document.getElementById('stats-tab');
+      tab.setAttribute('aria-expanded', 'false');
+      tab.focus();
+    }
+  };
+
+  Stats.load();
+  Stats.render();
+  Stats.renderCloud();
+
+  document.getElementById('stats-tab').addEventListener('click', () => Stats.open());
+  document.getElementById('stats-close').addEventListener('click', () => Stats.close());
+  document.getElementById('stats-backdrop').addEventListener('click', () => Stats.close());
+  document.querySelectorAll('.stats-subject-btn').forEach(b => {
+    b.addEventListener('click', () => { Stats.viewSubject = b.dataset.statsSubject; Stats.render(); });
+  });
+  document.getElementById('stats-signin').addEventListener('click', () => {
+    if(!Stats.cloud) return;
+    Stats.setCloudMsg('', false);
+    Stats.cloud.signIn().catch(err => {
+      if(err && err.code === 'auth/popup-closed-by-user') return;
+      Stats.setCloudMsg('Sign-in failed: ' + Stats.errText(err), true);
+    });
+  });
+  document.getElementById('stats-signout').addEventListener('click', () => {
+    if(Stats.cloud) Stats.cloud.signOut();
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && document.getElementById('stats-drawer').classList.contains('open')) Stats.close();
+  });
+</script>
+
+<!-- ===================== FIREBASE (optional cloud sync) =====================
+     Paste your Firebase web-app config below. These values are NOT secrets —
+     they only identify your project. Your data is protected by Firebase Auth
+     plus the Firestore rules in firestore.rules (see SETUP.md). -->
+<script>
+  window.FIREBASE_CONFIG = {
+    apiKey: "AIzaSyC0gmjCQhGqia4cufSw8ab8qcGViMiYoBk",
+    authDomain: "atpl-quiz-b7976.firebaseapp.com",
+    projectId: "atpl-quiz-b7976",
+    appId: "1:1000254091345:web:e94c53faaf0ec751174870"
+  };
+</script>
+<script type="module">
+  const cfg = window.FIREBASE_CONFIG;
+  if(cfg && cfg.apiKey && cfg.projectId){
+    try{
+      const V = '10.14.1';
+      const [{ initializeApp }, A, F] = await Promise.all([
+        import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+        import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
+        import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`)
+      ]);
+
+      const app  = initializeApp(cfg);
+      const auth = A.getAuth(app);
+      const db   = F.getFirestore(app);
+      const ref  = (subj) => F.doc(db, 'users', auth.currentUser.uid, 'stats', subj);
+
+      Stats.attachCloud({
+        signIn:  () => A.signInWithPopup(auth, new A.GoogleAuthProvider()),
+        signOut: () => A.signOut(auth),
+        async pull(){
+          const out = {};
+          for(const subj of ['aero', 'instr']){
+            const snap = await F.getDoc(ref(subj));
+            out[subj] = snap.exists() ? (snap.data().wrong || {}) : {};
+          }
+          return out;
+        },
+        increment: (subj, n) => F.setDoc(
+          ref(subj),
+          { wrong: { [String(n)]: F.increment(1) }, updatedAt: F.serverTimestamp() },
+          { merge: true }
+        ),
+        set: (subj, map) => F.setDoc(
+          ref(subj),
+          { wrong: map, updatedAt: F.serverTimestamp() },
+          { merge: true }
+        )
+      });
+      A.onAuthStateChanged(auth, (u) => Stats.onAuth(u));
+    }catch(err){
+      Stats.setCloudMsg('Cloud sync unavailable: ' + Stats.errText(err), true);
+    }
+  }
 </script>
 
 </body>
