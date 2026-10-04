@@ -1241,13 +1241,55 @@
     return a;
   }
 
+  const RANDOM_DECK_KEY = 'flightcheck.randomDeck.v1';
+
+  function loadRandomDeck(){
+    try {
+      const all = JSON.parse(localStorage.getItem(RANDOM_DECK_KEY) || '{}');
+      const nums = currentSubject && all[currentSubject];
+      return Array.isArray(nums) ? nums : [];
+    } catch(e){
+      return [];
+    }
+  }
+
+  function saveRandomDeck(nums){
+    if(!currentSubject) return;
+    try {
+      const all = JSON.parse(localStorage.getItem(RANDOM_DECK_KEY) || '{}');
+      all[currentSubject] = nums;
+      localStorage.setItem(RANDOM_DECK_KEY, JSON.stringify(all));
+    } catch(e){}
+  }
+
+  function pickRandomQuestions(pool, n){
+    const byNumber = new Map();
+    for(const q of pool){
+      if(!byNumber.has(q.number)) byNumber.set(q.number, q);
+    }
+    const allowed = [...byNumber.keys()];
+    const allowedSet = new Set(allowed);
+    let deck = loadRandomDeck().filter(num => allowedSet.has(num));
+
+    if(deck.length < n){
+      const held = new Set(deck);
+      deck = deck.concat(shuffle(allowed.filter(num => !held.has(num))));
+    }
+    if(deck.length < n){
+      deck = shuffle(allowed);
+    }
+
+    const take = Math.min(n, deck.length);
+    const picked = deck.slice(0, take);
+    saveRandomDeck(deck.slice(take));
+    return shuffle(picked.map(num => byNumber.get(num)));
+  }
+
   function buildSession(){
     let start = parseInt(startQuestion.value, 10);
     if(isNaN(start) || start < 1) start = 1;
     if(start > QUESTIONS.length) start = QUESTIONS.length;
     startQuestion.value = start;
-
-    const startQ = QUESTIONS[start - 1];
 
     if(selectedMode === 'all'){
       sessionQuestions = QUESTIONS.slice(start - 1);
@@ -1261,8 +1303,9 @@
         if(n > QUESTIONS.length) n = QUESTIONS.length;
       }
 
-      const pool = QUESTIONS.filter(q => q.number !== startQ.number);
-      sessionQuestions = [startQ, ...shuffle(pool).slice(0, Math.max(0, n - 1))];
+      const pool = QUESTIONS.filter(q => q.number >= start);
+      const usable = pool.length ? pool : QUESTIONS;
+      sessionQuestions = pickRandomQuestions(usable, Math.min(n, usable.length));
     }
   }
 
