@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Aerodynamics Flight Check</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
@@ -876,12 +876,74 @@
     text-align:center;
   }
 
+  body.locked{
+    padding:0;
+    align-items:stretch;
+    justify-content:stretch;
+  }
+  body.locked .login-wrap{
+    max-width:none;
+    width:100%;
+    min-height:100svh;
+    min-height:100dvh;
+    overflow:auto;
+  }
+
   @media (min-width: 1000px){
     .login-wrap{ max-width:none; align-items:flex-end; padding-right:7vw; }   /* card right, radar left */
+    body.locked .login-wrap{ align-items:flex-end; }
   }
   @media (max-width: 480px){
     .login-card{ padding:32px 22px 24px; }
     .login-title{ font-size:28px; }
+  }
+
+  /* Phone: radar on top, login sheet at the bottom so the sweep is actually visible */
+  @media (max-width: 799px){
+    body.locked .login-wrap{
+      justify-content:flex-end;
+      padding:0;
+    }
+    .login-card{
+      width:100%;
+      max-width:none;
+      margin:0;
+      padding:18px 20px 14px;
+      padding-bottom:max(14px, env(safe-area-inset-bottom));
+      border-radius:18px 18px 0 0;
+      background:linear-gradient(180deg, rgba(19,27,44,0.94), rgba(11,17,28,0.98));
+      box-shadow:0 -18px 40px -16px rgba(0,0,0,0.55);
+    }
+    .login-emblem{ width:44px; height:44px; margin:0 auto 8px; }
+    .login-eyebrow{ margin-bottom:4px; }
+    .login-title{ font-size:26px; margin:0 0 6px; }
+    .login-sub{ font-size:14px; margin:0 auto 16px; }
+    .login-field{ margin-bottom:12px; }
+    .login-field input{ padding:12px 14px; }
+    .login-btn{ padding:13px 18px; }
+    .login-toggle{ margin-top:12px; padding:10px 6px; }
+    .login-foot{
+      max-width:none;
+      margin:10px 0 0;
+      padding:0 12px calc(8px + env(safe-area-inset-bottom));
+    }
+  }
+  @media (max-width: 799px) and (orientation: landscape){
+    body.locked .login-wrap{
+      flex-direction:row;
+      align-items:stretch;
+      justify-content:flex-end;
+    }
+    .login-card{
+      width:min(420px, 52vw);
+      max-height:100dvh;
+      overflow:auto;
+      border-radius:0;
+      padding:16px 18px;
+      padding-right:max(18px, env(safe-area-inset-right));
+    }
+    .login-emblem{ display:none; }
+    .login-foot{ display:none; }
   }
   @media (prefers-reduced-motion: reduce){
     .login-card{ animation:none; }
@@ -2072,7 +2134,22 @@
       const dpr = Math.min(devicePixelRatio || 1, 2);
       W = innerWidth; H = innerHeight;
       cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      R = Math.max(Math.min(W, H) * 0.45, H * 0.40); PX = R / RANGE; cX = W >= 1000 ? W * 0.36 : W / 2; cY = H / 2;
+      const phone = W < 800;
+      const landscape = phone && W > H;
+      if(landscape){
+        R = Math.min(H * 0.46, W * 0.28);
+        cX = W * 0.28;
+        cY = H * 0.50;
+      } else if(phone){
+        R = Math.min(W * 0.46, H * 0.30);
+        cX = W * 0.50;
+        cY = Math.max(R + 18, H * 0.26);
+      } else {
+        R = Math.max(Math.min(W, H) * 0.45, H * 0.40);
+        cX = W >= 1000 ? W * 0.36 : W / 2;
+        cY = H / 2;
+      }
+      PX = R / RANGE;
     }
 
     function step(dt){
