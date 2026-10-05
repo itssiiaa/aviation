@@ -1163,8 +1163,9 @@
   <div class="stats-cloud">
     <div class="stats-cloud-status" id="stats-cloud-status">Saved on this device only.</div>
     <div class="stats-cloud-actions">
-      <button class="ghost-btn danger-btn" id="stats-reset" type="button">Reset this subject</button>
-      <button class="ghost-btn" id="stats-logout" type="button">Log out</button>
+      <button class="ghost-btn danger-btn" id="stats-reset-wrong" type="button">Reset most missed</button>
+      <button class="ghost-btn danger-btn" id="stats-reset-hist" type="button">Reset past quizzes</button>
+      <button class="ghost-btn" id="stats-logout" type="button" style="grid-column:1/-1">Log out</button>
     </div>
   </div>
 </aside>
@@ -1605,7 +1606,7 @@
   // Counts are saved on this device (localStorage) and, once logged in, synced to
   // Firestore under users/{uid}/stats/{subject} so every device shows the same numbers.
   const STATS_KEY = 'flightcheck.wrongCounts.v1';
-  const HIST_KEY = 'flightcheck.history.v1';   // device-only: past quiz results
+  const HIST_KEY = 'flightcheck.history.v1';   // past quiz results (synced like the counts)
   const PENDING_KEY = 'flightcheck.pendingReset.v1';
   const SESSION_KEY = 'flightcheck.session.v1';       // lets you keep using the quiz offline
   const LOGIN_DOMAIN = '@atplquiz.app';                // username -> internal Firebase email
@@ -1616,7 +1617,7 @@
     user: null,
     cloudFailed: false,
     viewSubject: 'aero',
-    pendingReset: { aero: false, instr: false },
+    pendingReset: { aero: { w: false, h: false }, instr: { w: false, h: false } },
     history: { aero: [], instr: [] },
     cloudMsg: '',
     cloudErr: false,
@@ -1655,34 +1656,51 @@
       h.length = Math.min(h.length, 100);
       this.saveHistory();
       this.render();
+      this.pushHistory(subj);
+    },
+    // newest first, one entry per run id (the more complete copy wins), capped at 100
+    mergeHist(a, b){
+      const m = new Map();
+      [].concat(a || [], b || []).forEach(r => {
+        if(!r || r.id == null) return;
+        const o = m.get(r.id);
+        if(!o || (r.n || 0) > (o.n || 0) || ((r.n || 0) === (o.n || 0) && (r.c || 0) > (o.c || 0))) m.set(r.id, { id: r.id, c: r.c, n: r.n, b: r.b });
+      });
+      return Array.from(m.values()).sort((x, y) => y.id - x.id).slice(0, 100);
+    },
+    async pushHistory(subj){
+      if(!this.cloud || !this.user || this.pendingReset[subj].h) return;
+      try{
+        const remote = await this.cloud.pull();
+        this.history[subj] = this.mergeHist(this.history[subj], (remote[subj] || {}).history);
+        this.saveHistory(); this.render();
+        await this.cloud.setHist(subj, this.history[subj]);
+      }catch(err){ this.setCloudMsg('Cloud save failed: ' + this.errText(err), true); }
     },
     loadPending(){
       try{
         const raw = JSON.parse(localStorage.getItem(PENDING_KEY) || '{}');
-        Object.keys(this.pendingReset).forEach(k => { this.pendingReset[k] = !!(raw && raw[k]); });
+        Object.keys(this.pendingReset).forEach(k => { const v = raw && raw[k]; this.pendingReset[k] = v === true ? { w: true, h: true } : { w: !!(v && v.w), h: !!(v && v.h) }; });
       }catch(e){}
     },
     savePending(){
       try{ localStorage.setItem(PENDING_KEY, JSON.stringify(this.pendingReset)); }catch(e){}
     },
-    // Wipe one subject. Remembered as "pending" until the server confirms, so a
-    // reset done while offline is not undone by the next sync.
-    async resetSubject(subject){
+    // Wipe one part of a subject: 'w' = most missed counts, 'h' = past quizzes. Remembered as
+    // "pending" until the server confirms, so a reset done offline is not undone by the next sync.
+    async resetPart(subject, part){
       if(!this.data[subject]) return;
-      this.data[subject] = {};
-      this.history[subject] = [];
-      this.save();
-      this.saveHistory();
+      if(part === 'w'){ this.data[subject] = {}; this.save(); } else { this.history[subject] = []; this.saveHistory(); }
       this.render();
       let usedCloud = false;
       try{ usedCloud = !!this.user || localStorage.getItem(SESSION_KEY) === '1'; }catch(e){}
       if(!usedCloud) return;
-      this.pendingReset[subject] = true;
+      this.pendingReset[subject][part] = true;
       this.savePending();
       if(this.cloud && this.user){
         try{
-          await this.cloud.reset(subject);
-          this.pendingReset[subject] = false;
+          await (part === 'w' ? this.cloud.resetWrong(subject) : this.cloud.resetHist(subject));
+          this.pendingReset[subject][part] = false;
           this.savePending();
           this.setCloudMsg('', false);
         }catch(err){
@@ -1722,14 +1740,21 @@
       try{
         const remote = await this.cloud.pull();
         for(const subj of Object.keys(this.data)){
-          if(this.pendingReset[subj]){
-            await this.cloud.reset(subj);          // a reset you made earlier wins over old online counts
-            this.pendingReset[subj] = false;
-            this.savePending();
-            this.data[subj] = {};
-            continue;
+          const rem = remote[subj] || {}, pend = this.pendingReset[subj];
+          // history: a reset you made earlier wins; otherwise union of both devices
+          if(pend.h){ await this.cloud.resetHist(subj); pend.h = false; this.history[subj] = []; }
+          else {
+            const mh = this.mergeHist(this.history[subj], rem.history);
+            const remoteIds = new Set((rem.history || []).map(x => x.id));
+            this.history[subj] = mh;
+            if(pushLocalAhead && (mh.length > remoteIds.size || mh.some(x => !remoteIds.has(x.id)))) await this.cloud.setHist(subj, mh);
           }
-          const r = remote[subj] || {};
+          if(pend.w){                              // a reset you made earlier wins over old online counts
+            await this.cloud.resetWrong(subj); pend.w = false; this.data[subj] = {};
+            this.savePending(); continue;
+          }
+          this.savePending();
+          const r = rem.wrong || {};
           const merged = Object.assign({}, this.data[subj]);
           let needPush = false;
           Object.keys(r).forEach(n => {
@@ -1742,7 +1767,7 @@
           this.data[subj] = merged;
           if(pushLocalAhead && needPush) await this.cloud.set(subj, merged);
         }
-        this.save();
+        this.save(); this.saveHistory();
         this.setCloudMsg('', false);
         this.render();
       }catch(err){
@@ -1890,24 +1915,29 @@
     if(e.key === 'Escape' && document.getElementById('stats-drawer').classList.contains('open')) Stats.close();
   });
 
-  // ----- reset button: tap once to arm, tap again to confirm -----
-  let resetTimer = null;
+  // ----- reset buttons: tap once to arm, tap again to confirm -----
+  const RESETS = { 'stats-reset-wrong': ['w', 'Reset most missed'], 'stats-reset-hist': ['h', 'Reset past quizzes'] };
+  const resetTimers = {};
   function disarmReset(){
-    clearTimeout(resetTimer);
-    const b = document.getElementById('stats-reset');
-    b.classList.remove('armed');
-    b.textContent = 'Reset this subject';
+    Object.keys(RESETS).forEach(id => {
+      clearTimeout(resetTimers[id]);
+      const b = document.getElementById(id);
+      b.classList.remove('armed'); b.textContent = RESETS[id][1];
+    });
   }
-  document.getElementById('stats-reset').addEventListener('click', () => {
-    const b = document.getElementById('stats-reset');
-    if(!b.classList.contains('armed')){
-      b.classList.add('armed');
-      b.textContent = 'Tap again to confirm';
-      resetTimer = setTimeout(disarmReset, 4000);
-      return;
-    }
-    disarmReset();
-    Stats.resetSubject(Stats.viewSubject);
+  Object.keys(RESETS).forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      const b = document.getElementById(id);
+      if(!b.classList.contains('armed')){
+        disarmReset();
+        b.classList.add('armed');
+        b.textContent = 'Tap again to confirm';
+        resetTimers[id] = setTimeout(disarmReset, 4000);
+        return;
+      }
+      disarmReset();
+      Stats.resetPart(Stats.viewSubject, RESETS[id][0]);
+    });
   });
   document.getElementById('stats-close').addEventListener('click', disarmReset);
 
@@ -2323,8 +2353,8 @@
       async pull(){
         const out = {};
         for(const subj of ['aero', 'instr']){
-          const snap = await F.getDoc(ref(subj));
-          out[subj] = snap.exists() ? (snap.data().wrong || {}) : {};
+          const snap = await F.getDoc(ref(subj)), d = snap.exists() ? snap.data() : {};
+          out[subj] = { wrong: d.wrong || {}, history: Array.isArray(d.history) ? d.history : [] };
         }
         return out;
       },
@@ -2338,8 +2368,10 @@
         { wrong: map, updatedAt: F.serverTimestamp() },
         { merge: true }
       ),
-      // replaces the whole document (no merge) so the counts really go to zero
-      reset: (subj) => F.setDoc(ref(subj), { wrong: {}, updatedAt: F.serverTimestamp() })
+      setHist: (subj, list) => F.setDoc(ref(subj), { history: list, updatedAt: F.serverTimestamp() }, { merge: true }),
+      // mergeFields replaces just that field wholesale, so the other part is left alone
+      resetWrong: (subj) => F.setDoc(ref(subj), { wrong: {}, updatedAt: F.serverTimestamp() }, { mergeFields: ['wrong', 'updatedAt'] }),
+      resetHist: (subj) => F.setDoc(ref(subj), { history: [], updatedAt: F.serverTimestamp() }, { mergeFields: ['history', 'updatedAt'] })
     });
     A.onAuthStateChanged(auth, (u) => Stats.onAuth(u));
   }catch(err){
