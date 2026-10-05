@@ -2,8 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Aerodynamics Flight Check</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATPL Quiz</title>
+<meta name="theme-color" content="#0B111C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ATPL Quiz">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B111C'/%3E%3Cpath d='M32 10 L35.2 28 L50 37 L50 41 L35.4 37 L34.6 48 L40 52 L40 55 L32 52.5 L24 55 L24 52 L29.4 48 L28.6 37 L14 41 L14 37 L28.8 28 Z' fill='%23F5A623'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
@@ -542,9 +548,7 @@
     position:fixed;
     top:0;
     right:0;
-    bottom:0;
-    height:auto;
-    max-height:100dvh;
+    height:100vh;
     width:min(380px, 92vw);
     z-index:50;
     display:flex;
@@ -567,7 +571,6 @@
     align-items:center;
     justify-content:space-between;
     padding:18px 20px 14px;
-    padding-top:max(18px, env(safe-area-inset-top, 0px));
     border-bottom:1px solid var(--border);
   }
   .stats-title{ font-size:17px; font-weight:600; margin:0; }
@@ -669,9 +672,8 @@
   }
 
   .stats-cloud{
-    flex-shrink:0;
     border-top:1px solid var(--border);
-    padding:14px 20px calc(28px + env(safe-area-inset-bottom, 0px));
+    padding:14px 20px 18px;
   }
   .stats-cloud-status{
     font-size:12.5px;
@@ -698,7 +700,8 @@
     position:relative;
     width:100%;
     max-width:640px;
-    min-height:calc(100vh - 128px);
+    min-height:100vh;
+    min-height:100dvh;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -880,90 +883,53 @@
     text-align:center;
   }
 
-  html:has(body.locked),
-  body.locked{
-    overflow:hidden;
-    overscroll-behavior:none;
-    touch-action:manipulation;
-    height:100%;
-    max-height:100%;
-  }
-  body.locked{
-    padding:0;
-    align-items:stretch;
-    justify-content:stretch;
-  }
-  body.locked .login-wrap{
-    position:fixed;
-    inset:0;
-    max-width:none;
-    width:100%;
-    height:100%;
-    min-height:0;
-    overflow:hidden;
-  }
-  body.locked .login-bg{
-    position:absolute;
-  }
-
-  @media (min-width: 1000px){
-    .login-wrap{ max-width:none; align-items:flex-end; padding-right:7vw; }   /* card right, radar left */
-    body.locked .login-wrap{ align-items:flex-end; }
-  }
   @media (max-width: 480px){
     .login-card{ padding:32px 22px 24px; }
     .login-title{ font-size:28px; }
   }
-
-  /* Phone: radar on top, login sheet at the bottom so the sweep is actually visible */
-  @media (max-width: 799px){
-    body.locked .login-wrap{
-      justify-content:flex-end;
-      padding:0;
-    }
-    .login-card{
-      width:100%;
-      max-width:none;
-      margin:0;
-      padding:18px 20px 14px;
-      padding-bottom:max(14px, env(safe-area-inset-bottom));
-      border-radius:18px 18px 0 0;
-      background:linear-gradient(180deg, rgba(19,27,44,0.94), rgba(11,17,28,0.98));
-      box-shadow:0 -18px 40px -16px rgba(0,0,0,0.55);
-    }
-    .login-emblem{ width:44px; height:44px; margin:0 auto 8px; }
-    .login-eyebrow{ margin-bottom:4px; }
-    .login-title{ font-size:26px; margin:0 0 6px; }
-    .login-sub{ font-size:14px; margin:0 auto 16px; }
-    .login-field{ margin-bottom:12px; }
-    .login-field input{ padding:12px 14px; }
-    .login-btn{ padding:13px 18px; }
-    .login-toggle{ margin-top:12px; padding:10px 6px; }
-    .login-foot{
-      max-width:none;
-      margin:8px 0 0;
-      padding:0 12px 4px;
-    }
-  }
-  @media (max-width: 799px) and (orientation: landscape){
-    body.locked .login-wrap{
-      flex-direction:row;
-      align-items:stretch;
-      justify-content:flex-end;
-    }
-    .login-card{
-      width:min(420px, 52vw);
-      max-height:100dvh;
-      overflow:auto;
-      border-radius:0;
-      padding:16px 18px;
-      padding-right:max(18px, env(safe-area-inset-right));
-    }
-    .login-emblem{ display:none; }
-    .login-foot{ display:none; }
-  }
   @media (prefers-reduced-motion: reduce){
     .login-card{ animation:none; }
+  }
+
+
+  /* ---------- ATPL Quiz polish ---------- */
+  html,body{ min-height:100vh; min-height:100dvh; }
+  body{ -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100%; }
+  button,.subject-card,.mode-btn{ touch-action:manipulation; }
+  .app{ position:relative; z-index:1; }
+  .sky-bg{ position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; display:none; }
+  body.locked{ padding-top:0; padding-bottom:0; }
+  .eyebrow{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.28em; text-transform:uppercase; color:var(--text-dim); margin-bottom:10px; }
+  .amber-t{ color:var(--amber); }
+  #screen-subject .panel{ background:linear-gradient(180deg, rgba(27,39,64,0.72), rgba(19,27,44,0.82)); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); box-shadow:0 30px 80px -30px rgba(0,0,0,0.75); }
+  #screen-subject .start-title{ font-size:34px; letter-spacing:0.01em; }
+  #screen-subject:not(.hidden), #screen-start:not(.hidden){ animation:screen-in .4s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes screen-in{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+  .subject-card{ position:relative; overflow:hidden; transition:transform .2s ease, border-color .15s ease, box-shadow .2s ease, background .15s ease; }
+  .subject-card::after{ content:'→'; position:absolute; right:16px; top:16px; color:var(--text-dim); transition:transform .2s ease, color .15s ease; }
+  .subject-card:hover, .subject-card:focus-visible{ transform:translateY(-3px); box-shadow:0 16px 34px -18px rgba(245,166,35,0.55); background:#202e4c; }
+  .subject-card:hover::after{ color:var(--amber); transform:translateX(3px); }
+  .subject-card:active{ transform:translateY(0) scale(.99); }
+  .subject-card-icon{ display:block; width:34px; height:34px; color:var(--amber); margin-bottom:14px; }
+  .mode-btn, .primary-btn{ transition:transform .15s ease, border-color .15s ease, background .15s ease, filter .15s ease; }
+  .mode-btn:active, .primary-btn:active{ transform:scale(.98); }
+
+  /* login radar layout: wide = scope left / card right; tall or phone = scope on top / card below */
+  @media (min-width:700px) and (min-aspect-ratio:87/100){
+    .login-wrap{ max-width:none; align-items:flex-end; padding-right:7vw; }
+  }
+  @media (max-width:699px), (max-aspect-ratio:87/100){
+    .login-wrap{ max-width:none; justify-content:flex-start; padding:var(--scope-h, 0px) 0 40px; }
+  }
+  @media (max-height:560px){
+    .login-emblem, .login-sub{ display:none; }
+    .login-card{ padding:20px 22px 16px; }
+    .login-field{ margin-bottom:10px; }
+  }
+  @media (max-width:480px){
+    body{ padding:24px 14px 64px; }
+    #screen-subject .start-title{ font-size:30px; }
+    .login-wrap{ padding-left:2px; padding-right:2px; }
   }
 
   .stats-h{ font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-dim); margin:16px 0 8px; }
@@ -976,11 +942,7 @@
     grid-template-columns:1fr 1fr;
     gap:8px;
   }
-  .stats-cloud-actions .ghost-btn{
-    font-size:13px;
-    padding:12px 8px;
-    min-height:44px;
-  }
+  .stats-cloud-actions .ghost-btn{ font-size:13px; padding:11px 8px; }
   .danger-btn{ color:var(--red); border-color:rgba(229,72,77,0.45); }
   .danger-btn:hover{ border-color:var(--red); background:rgba(229,72,77,0.08); }
   .danger-btn.armed{ background:var(--red); border-color:var(--red); color:#fff; }
@@ -998,7 +960,7 @@
       <path d="M32 13 L35.2 29 L47 36.5 L47 39.5 L35.4 36.3 L34.6 46.5 L39 49.6 L39 52 L32 50 L25 52 L25 49.6 L29.4 46.5 L28.6 36.3 L17 39.5 L17 36.5 L28.8 29 Z" fill="#F5A623"/>
     </svg>
     <div class="login-eyebrow">ATPL · Theory Trainer</div>
-    <h1 class="login-title">Flight <span>Check</span></h1>
+    <h1 class="login-title">ATPL <span>Quiz</span></h1>
     <p class="login-sub" id="login-sub">Log in to continue your training.</p>
 
     <form id="login-form" autocomplete="on">
@@ -1026,21 +988,26 @@
   <p class="login-foot">PRE-FLIGHT CHECKS · STATS SAVED TO YOUR ACCOUNT</p>
 </div>
 
+<canvas id="sky" class="sky-bg" aria-hidden="true"></canvas>
+
 <div class="app">
 
   <!-- ===================== SUBJECT SELECT SCREEN ===================== -->
   <div id="screen-subject">
     <div class="panel">
-      <h1 class="start-title">Flight Check</h1>
+      <div class="eyebrow">Theory Trainer</div>
+      <h1 class="start-title">ATPL <span class="amber-t">Quiz</span></h1>
       <p class="start-sub">Pick a subject to study. Each one is pulled straight from your reference material.</p>
 
       <div class="subject-grid" id="subject-grid">
         <button class="subject-card" data-subject="aero">
+          <svg class="subject-card-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 28c8-1 14-9 22-9 8 0 12 4 18 4-2 4-7 7-14 7-8 0-10 3-26-2z"/><path d="M8 38h10M26 38h14" stroke-opacity=".5"/></svg>
           <div class="subject-card-title">Aerodynamics</div>
           <div class="subject-card-count" id="subject-count-aero">— questions</div>
           <div class="subject-card-desc">Air, lift, drag, stability and control.</div>
         </button>
         <button class="subject-card" data-subject="instr">
+          <svg class="subject-card-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="18"/><path d="M24 24l8-9"/><circle cx="24" cy="24" r="1.8" fill="currentColor"/><path d="M10 24h3M35 24h3M24 10v3M13.5 13.5l2 2M34.5 13.5l-2 2" stroke-opacity=".6"/></svg>
           <div class="subject-card-title">Instrumentation</div>
           <div class="subject-card-count" id="subject-count-instr">— questions</div>
           <div class="subject-card-desc">Pitot-static, gyros, compasses and flight instruments.</div>
@@ -1052,7 +1019,7 @@
   <!-- ===================== START SCREEN ===================== -->
   <div id="screen-start" class="hidden">
     <div class="panel">
-      <h1 class="start-title" id="start-title">Flight Check</h1>
+      <h1 class="start-title" id="start-title">ATPL Quiz</h1>
       <p class="start-sub" id="start-sub-text">Pick a session length to begin.</p>
 
       <div class="mode-grid" id="mode-grid">
@@ -1249,7 +1216,7 @@
     currentSubject = key;
     QUESTIONS = subject.questions;
 
-    startTitle.textContent = subject.name + ' Flight Check';
+    startTitle.textContent = subject.name + ' Quiz';
     startSubText.textContent = `${QUESTIONS.length} multiple-choice questions on ${subject.name.toLowerCase()} — pulled straight from your reference material. Pick a session length to begin.`;
     modeAllSub.textContent = `All ${QUESTIONS.length}, in order`;
 
@@ -1324,55 +1291,13 @@
     return a;
   }
 
-  const RANDOM_DECK_KEY = 'flightcheck.randomDeck.v1';
-
-  function loadRandomDeck(){
-    try {
-      const all = JSON.parse(localStorage.getItem(RANDOM_DECK_KEY) || '{}');
-      const nums = currentSubject && all[currentSubject];
-      return Array.isArray(nums) ? nums : [];
-    } catch(e){
-      return [];
-    }
-  }
-
-  function saveRandomDeck(nums){
-    if(!currentSubject) return;
-    try {
-      const all = JSON.parse(localStorage.getItem(RANDOM_DECK_KEY) || '{}');
-      all[currentSubject] = nums;
-      localStorage.setItem(RANDOM_DECK_KEY, JSON.stringify(all));
-    } catch(e){}
-  }
-
-  function pickRandomQuestions(pool, n){
-    const byNumber = new Map();
-    for(const q of pool){
-      if(!byNumber.has(q.number)) byNumber.set(q.number, q);
-    }
-    const allowed = [...byNumber.keys()];
-    const allowedSet = new Set(allowed);
-    let deck = loadRandomDeck().filter(num => allowedSet.has(num));
-
-    if(deck.length < n){
-      const held = new Set(deck);
-      deck = deck.concat(shuffle(allowed.filter(num => !held.has(num))));
-    }
-    if(deck.length < n){
-      deck = shuffle(allowed);
-    }
-
-    const take = Math.min(n, deck.length);
-    const picked = deck.slice(0, take);
-    saveRandomDeck(deck.slice(take));
-    return shuffle(picked.map(num => byNumber.get(num)));
-  }
-
   function buildSession(){
     let start = parseInt(startQuestion.value, 10);
     if(isNaN(start) || start < 1) start = 1;
     if(start > QUESTIONS.length) start = QUESTIONS.length;
     startQuestion.value = start;
+
+    const startQ = QUESTIONS[start - 1];
 
     if(selectedMode === 'all'){
       sessionQuestions = QUESTIONS.slice(start - 1);
@@ -1386,9 +1311,8 @@
         if(n > QUESTIONS.length) n = QUESTIONS.length;
       }
 
-      const pool = QUESTIONS.filter(q => q.number >= start);
-      const usable = pool.length ? pool : QUESTIONS;
-      sessionQuestions = pickRandomQuestions(usable, Math.min(n, usable.length));
+      const pool = QUESTIONS.filter(q => q.number !== startQ.number);
+      sessionQuestions = [startQ, ...shuffle(pool).slice(0, Math.max(0, n - 1))];
     }
   }
 
@@ -2106,7 +2030,7 @@
   (function(){
     const cv = document.getElementById('radar'), g = cv.getContext('2d');
     const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const RANGE = 50, TS = 2, SW = 5;                // NM at outer ring; sim speed-up (1 = real time); seconds per sweep
+    let RANGE = 50; const TS = 2, SW = 5;                // NM at outer ring; sim speed-up (1 = real time); seconds per sweep
     const BRG = 110, RWY = 290;                      // both airports: final approach comes in from 110°, landing 290°
     const AMB = '255,196,80', TXT = 'rgba(255,220,140,0.95)', RED = '#FF4040', TAU = 6.2832;
     const rad = d => d * Math.PI / 180, S = d => Math.sin(rad(d)), K = d => Math.cos(rad(d));
@@ -2121,7 +2045,7 @@
     const AIRPORTS = [{ id: 'OIIE', e: 0, n: 0, elev: 3305, RL: 2.3, SEP: 0.4 }, { id: 'OIII', e: 7.9, n: 16.4, elev: 3962, RL: 2.15, SEP: 0.45 }];
     AIRPORTS.forEach(p => { p.thr = { e: p.e + p.SEP * S(20) + p.RL / 2 * S(BRG), n: p.n + p.SEP * K(20) + p.RL / 2 * K(BRG) }; });   // 29R threshold
 
-    let W, H, R, PX, cX, cY, ac = [], last = 0, t = 0, th = 0;
+    let W, H, R, PX, cX, cY, stack, small, ac = [], last = 0, t = 0, th = 0;
     const xy = (e, n) => [cX + e * PX, cY - n * PX];
 
     // what the controller sees: refreshed only when the sweep crosses the target
@@ -2147,38 +2071,19 @@
     }
     function init(){
       ac = [];
-      for(let i = W < 600 ? 2 : 3; i > 0; i--) ac.push(mk({}));
+      for(let i = small ? (stack ? 2 : 1) : 3; i > 0; i--) ac.push(mk({}));
       ac.push(mk({ sq: '7700', emg: true, fl: 240, vs: -1, cs: pick(['IRA','IRM','QSM']) + Math.floor(rnd(100, 9999)) }));
       ac.push(mk({ fin: true, ap: AIRPORTS[0], d: 13, kt: 155 }), mk({ fin: true, ap: AIRPORTS[1], d: 9, kt: 150 }));
     }
     function size(){
       const dpr = Math.min(devicePixelRatio || 1, 2);
-      const box = cv.parentElement.getBoundingClientRect();
-      const nw = Math.max(1, Math.round(box.width || innerWidth));
-      const nh = Math.max(1, Math.round(box.height || innerHeight));
-      const widthJump = !W || Math.abs(nw - W) > 2;
-      const heightJump = !H || Math.abs(nh - H) > 80;
-      if(!widthJump && !heightJump && cv.width) return false;
-      const rotated = W && Math.abs(nw - W) > 80;
-      W = nw; H = nh;
+      W = innerWidth; H = innerHeight;
       cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const phone = W < 800;
-      const landscape = phone && W > H;
-      if(landscape){
-        R = Math.min(H * 0.46, W * 0.28);
-        cX = W * 0.28;
-        cY = H * 0.50;
-      } else if(phone){
-        R = W * 0.46;
-        cX = W * 0.50;
-        cY = R + 18;
-      } else {
-        R = Math.max(Math.min(W, H) * 0.45, H * 0.40);
-        cX = W >= 1000 ? W * 0.36 : W / 2;
-        cY = H / 2;
-      }
-      PX = R / RANGE;
-      return rotated;
+      stack = W < 700 || W / H < 0.87;
+      if(stack){ R = Math.max(110, Math.min((W - 64) / 2, H * 0.27)); cX = W / 2; cY = R + 40; }
+      else { const left = W * 0.93 - Math.min(420, W - 40); R = Math.max(110, Math.min(H * 0.45, left / 2 - 30)); cX = Math.max(left / 2, R + 30); cY = H / 2; }
+      small = R < 200; RANGE = small ? 40 : 50; PX = R / RANGE;
+      document.documentElement.style.setProperty('--scope-h', stack ? Math.round(cY + R + 30) + 'px' : '0px');
     }
 
     function step(dt){
@@ -2221,7 +2126,7 @@
       for(let d = 5; d <= 20; d += 5){
         const x = tx + d * PX * S(BRG), y = ty - d * PX * K(BRG);
         g.beginPath(); g.moveTo(x - 4 * K(BRG), y - 4 * S(BRG)); g.lineTo(x + 4 * K(BRG), y + 4 * S(BRG)); g.stroke();
-        txt(d + '', x + 11 * S(BRG - 90), y - 11 * K(BRG - 90), `rgb(${AMB})`, 0.8);
+        if(!small) txt(d + '', x + 11 * S(BRG - 90), y - 11 * K(BRG - 90), `rgb(${AMB})`, 0.8);
       }
       const [ox, oy] = xy(p.e, p.n);
       g.textAlign = 'right'; txt(p.id, ox - 10, oy - 10, `rgb(${AMB})`);
@@ -2233,13 +2138,13 @@
       const glow = g.createRadialGradient(cX, cY, 0, cX, cY, R);
       glow.addColorStop(0, `rgba(${AMB},0.13)`); glow.addColorStop(1, `rgba(${AMB},0)`);
       g.fillStyle = glow; g.fillRect(0, 0, W, H);
-      g.font = '10px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = (small ? 9 : 10) + 'px "IBM Plex Mono", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
 
       // range rings (10 NM) + radials + bearing scale
       g.lineWidth = 1;
       for(let i = 1; i <= 5; i++){
         g.strokeStyle = `rgba(${AMB},${i === 5 ? 0.8 : 0.42})`; g.beginPath(); g.arc(cX, cY, R * i / 5, 0, TAU); g.stroke();
-        txt(String(i * 10), cX + 5 + R * i / 5 * 0.7071, cY - R * i / 5 * 0.7071 - 6, `rgb(${AMB})`, 0.8);
+        txt(String(i * RANGE / 5), cX + 5 + R * i / 5 * 0.7071, cY - R * i / 5 * 0.7071 - 6, `rgb(${AMB})`, 0.8);
       }
       g.strokeStyle = `rgba(${AMB},0.2)`;
       for(let b = 0; b < 360; b += 30){ g.beginPath(); g.moveTo(cX, cY); g.lineTo(cX + R * S(b), cY - R * K(b)); g.stroke(); }
@@ -2252,7 +2157,7 @@
 
       // map: cities, then both airports with their ILS
       g.textAlign = 'left';
-      CITIES.forEach(c => { const [x, y] = xy(c.e, c.nn); g.strokeStyle = `rgba(${AMB},0.8)`; g.strokeRect(x - 2, y - 2, 4, 4); txt(c.n, x + 7, y, `rgb(${AMB})`, 0.75); });
+      CITIES.forEach(c => { if(Math.hypot(c.e, c.nn) > RANGE) return; const [x, y] = xy(c.e, c.nn); g.strokeStyle = `rgba(${AMB},0.8)`; g.strokeRect(x - 2, y - 2, 4, 4); txt(c.n, x + 7, y, `rgb(${AMB})`, 0.75); });
       AIRPORTS.forEach(airport);
 
       // sweep with phosphor-style trailing wedge
@@ -2284,15 +2189,105 @@
 
     function loop(now){
       if(cv.offsetParent === null){ setTimeout(() => requestAnimationFrame(loop), 300); return; }   // login hidden: idle
-      if(size()) init();
+      if(cv.width !== Math.round(innerWidth * Math.min(devicePixelRatio || 1, 2))){ size(); init(); }
       const dt = Math.min((now - last) / 1000 || 0, 0.1); last = now;
       if(RM) th = 5.2; else { t += dt; step(dt); }
       draw();
       RM ? setTimeout(() => requestAnimationFrame(loop), 1000) : requestAnimationFrame(loop);
     }
     size(); init(); requestAnimationFrame(loop);
-    addEventListener('resize', () => { if(size()) init(); });
-    addEventListener('orientationchange', () => { size(); init(); });
+    addEventListener('resize', () => { size(); init(); });
+  })();
+
+  // ======================= Flight tracker backdrop (subject screen) =======================
+  // Pure canvas. Deliberately unlike the login radar: cool cyan palette, no sweep, plane icons
+  // flying curved airways between real Iranian airports. Coastline/border are rough.
+  (function(){
+    const cv = document.getElementById('sky'), g = cv.getContext('2d');
+    const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const C = '110,205,255', TAU = 6.2832, TS = 45;       // TS: sim speed-up (1 = real time)
+    const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
+    const AL = ['IRA','IRM','IRC','QSM','CPN','KIS','TBZ','UAE','QTR','THY','FDB','ETD','ABY','AFR','KLM'];
+    // [icao, lon, lat] approximate
+    const AP = { OIIE:[51.15,35.42], OIII:[51.31,35.69], OIFM:[51.86,32.75], OITT:[46.24,38.13], OIMM:[59.64,36.24], OISS:[52.59,29.54], OIKB:[56.38,27.22], OIAW:[48.76,31.34], OIBK:[53.98,26.53], OMDB:[55.36,25.25] };
+    // very rough Iran outline [lon,lat]
+    const IRAN = [[44.0,39.4],[44.8,37.2],[45.8,35.0],[45.4,34.0],[46.1,33.0],[47.7,31.0],[48.6,29.9],[50.1,30.1],[50.6,29.1],[51.5,27.9],[53.5,26.7],[54.7,26.5],[56.1,27.1],[57.3,25.7],[61.6,25.2],[62.5,26.5],[61.3,28.0],[60.9,29.8],[61.7,29.6],[60.6,31.5],[60.9,33.5],[60.5,34.3],[61.2,36.6],[60.0,36.6],[59.3,37.5],[57.5,38.2],[56.3,38.1],[55.0,37.2],[54.0,37.3],[53.0,36.9],[51.5,36.8],[50.5,37.0],[49.5,37.5],[49.0,38.4],[48.0,38.4],[44.2,38.4]];
+    const PAIRS = [['OIIE','OISS'],['OIII','OIMM'],['OIIE','OITT'],['OIFM','OIIE'],['OIAW','OIII'],['OIKB','OIIE'],['OMDB','OIIE'],['OIBK','OIII'],['OIMM','OISS'],['OITT','OIFM'],['OISS','OIIE'],['OIIE','OIAW']];
+    let W, H, SC, cX, cY, fl = [], last = 0, t = 0;
+    const LON0 = 53.5, LAT0 = 32.3, KX = Math.cos(32.3 * Math.PI / 180);
+    const xy = (lo, la) => [cX + (lo - LON0) * KX * SC, cY - (la - LAT0) * SC];
+
+    function route(a, b){      // quadratic bezier with a slight bow, like a plotted airway
+      const [x1, y1] = xy(...AP[a]), [x2, y2] = xy(...AP[b]), dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1;
+      return { x1, y1, x2, y2, mx: (x1 + x2) / 2 - dy / L * L * 0.12, my: (y1 + y2) / 2 + dx / L * L * 0.12, L };
+    }
+    const bz = (r, u) => { const v = 1 - u; return [v * v * r.x1 + 2 * v * u * r.mx + u * u * r.x2, v * v * r.y1 + 2 * v * u * r.my + u * u * r.y2]; };
+    function mk(first){
+      const p = pick(PAIRS), a = { cs: pick(AL) + Math.floor(rnd(100, 9999)), from: p[0], to: p[1], cr: pick([280, 320, 340, 360, 380]), kt: Math.round(rnd(400, 470)), u: first ? rnd(0.05, 0.85) : 0 };
+      a.rt = route(p[0], p[1]); return a;
+    }
+    function size(){
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const phone = W < 700, span = 21 * KX;
+      SC = phone ? W * 1.15 / span : Math.max(W / span, H / 18) * 1.0;
+      cX = W / 2; cY = phone ? H * 0.72 : H / 2;
+      const n = phone ? 4 : 7; fl = []; for(let i = 0; i < n; i++) fl.push(mk(true));
+    }
+    function plane(x, y, hdg, s, col){
+      g.save(); g.translate(x, y); g.rotate(hdg); g.scale(s, s); g.fillStyle = col;
+      g.beginPath(); g.moveTo(0, -7); g.lineTo(1.4, -2.5); g.lineTo(7, 1.5); g.lineTo(7, 3); g.lineTo(1.3, 1.4); g.lineTo(1, 5); g.lineTo(3, 6.5); g.lineTo(3, 7.5); g.lineTo(0, 6.8); g.lineTo(-3, 7.5); g.lineTo(-3, 6.5); g.lineTo(-1, 5); g.lineTo(-1.3, 1.4); g.lineTo(-7, 3); g.lineTo(-7, 1.5); g.lineTo(-1.4, -2.5); g.closePath(); g.fill(); g.restore();
+    }
+    function draw(){
+      g.clearRect(0, 0, W, H);
+      const bg = g.createRadialGradient(cX, cY, 0, cX, cY, Math.max(W, H) * 0.7);
+      bg.addColorStop(0, `rgba(${C},0.07)`); bg.addColorStop(1, `rgba(${C},0)`); g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      g.font = '10px "IBM Plex Mono", monospace'; g.textBaseline = 'middle';
+      // lat/lon graticule
+      g.lineWidth = 1; g.strokeStyle = `rgba(${C},0.10)`; g.fillStyle = `rgba(${C},0.38)`; g.textAlign = 'left';
+      for(let lo = 40; lo <= 66; lo += 2){ const [x] = xy(lo, 0); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); if(lo % 4 === 0) g.fillText(lo + '°E', x + 4, H - 12); }
+      for(let la = 20; la <= 44; la += 2){ const [, y] = xy(0, la); g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); if(la % 4 === 0) g.fillText(la + '°N', 6, y - 6); }
+      // outline
+      g.beginPath(); IRAN.forEach((p, i) => { const [x, y] = xy(...p); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.closePath();
+      g.fillStyle = `rgba(${C},0.045)`; g.fill(); g.strokeStyle = `rgba(${C},0.30)`; g.stroke();
+      // airways
+      fl.forEach(a => { const r = a.rt; g.setLineDash([3, 6]); g.strokeStyle = `rgba(${C},0.22)`; g.beginPath(); g.moveTo(r.x1, r.y1); g.quadraticCurveTo(r.mx, r.my, r.x2, r.y2); g.stroke(); g.setLineDash([]); });
+      // airports
+      g.textAlign = 'left';
+      Object.keys(AP).forEach(k => {
+        const [x, y] = xy(...AP[k]); if(k === 'OIII') return;           // OIII sits on top of OIIE at this scale: label once
+        g.fillStyle = k === 'OIIE' ? '#F5A623' : `rgba(${C},0.9)`; g.beginPath(); g.arc(x, y, k === 'OIIE' ? 3.4 : 2.4, 0, TAU); g.fill();
+        if(k === 'OIIE'){ const p = RM ? 0 : (t * 0.35) % 1; g.strokeStyle = `rgba(245,166,35,${1 - p})`; g.beginPath(); g.arc(x, y, 5 + p * 22, 0, TAU); g.stroke(); }
+        g.fillStyle = `rgba(${C},0.7)`; g.fillText(k === 'OIIE' ? 'OIIE / OIII' : k, x + 8, y + 1);
+      });
+      // flights
+      fl.forEach(a => {
+        const r = a.rt, [x, y] = bz(r, a.u), [xa, ya] = bz(r, Math.min(a.u + 0.01, 1)), hdg = Math.atan2(xa - x, -(ya - y));
+        g.strokeStyle = `rgba(${C},0.7)`; g.lineWidth = 1.5; g.beginPath(); g.moveTo(r.x1, r.y1);
+        for(let k = 1; k <= 24; k++){ const [px, py] = bz(r, a.u * k / 24); g.lineTo(px, py); } g.stroke(); g.lineWidth = 1;
+        const lvl = Math.max(0, Math.min(a.cr, a.cr * Math.min(a.u / 0.18, (1 - a.u) / 0.18))), arrow = a.u < 0.18 ? '↑' : a.u > 0.82 ? '↓' : '→';
+        g.shadowColor = `rgba(${C},0.9)`; g.shadowBlur = 8; plane(x, y, hdg, 1.05, '#EAF7FF'); g.shadowBlur = 0;
+        const flip = x > W - 130; g.textAlign = flip ? 'right' : 'left'; const bx = x + (flip ? -13 : 13);
+        g.fillStyle = '#EAF7FF'; g.fillText(a.cs, bx, y - 6);
+        g.fillStyle = `rgba(${C},0.8)`; g.fillText('FL' + String(Math.round(lvl / 10) * 10).padStart(3, '0') + arrow + ' ' + a.from + '›' + a.to, bx, y + 6);
+      });
+      g.fillStyle = `rgba(${C},0.35)`; g.textAlign = 'right'; g.fillText('TEHRAN FIR · OIIX', W - 14, 18);
+    }
+    function loop(now){
+      const on = !document.body.classList.contains('locked') && !document.getElementById('screen-subject').classList.contains('hidden');
+      cv.style.display = on ? 'block' : 'none';
+      if(!on){ setTimeout(() => requestAnimationFrame(loop), 300); return; }
+      if(cv.width !== Math.round(innerWidth * Math.min(devicePixelRatio || 1, 2))) size();
+      const dt = Math.min((now - last) / 1000 || 0, 0.1); last = now;
+      if(!RM){
+        t += dt;
+        fl.forEach((a, i) => { a.u += a.kt / 3600 * TS * dt / Math.max(a.rt.L / SC * 60, 20); if(a.u >= 1) fl[i] = mk(false); });   // u advances by NM flown / route NM
+      }
+      draw();
+      RM ? setTimeout(() => requestAnimationFrame(loop), 1000) : requestAnimationFrame(loop);
+    }
+    size(); requestAnimationFrame(loop);
+    addEventListener('resize', size);
   })();
 </script>
 
